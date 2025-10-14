@@ -11,10 +11,15 @@ type ChainID string
 
 var Mainnet ChainID = "1"
 
+// FromInt converts an Int into a ChainID
+func FromInt(id int) ChainID {
+	return ChainID(fmt.Sprintf("%d", id))
+}
+
 type response struct {
 	Status  string `json:"status"`
 	Message string `json:"message"`
-	Result  string `json:"result"`
+	Result  any    `json:"result"`
 }
 
 type Client struct {
@@ -26,8 +31,6 @@ func NewClient(apiKey string, chainID ChainID) *Client {
 	baseURL := "https://api.etherscan.io/v2/api"
 	baseURL += "?chainid=" + string(chainID)
 	baseURL += "&apikey=" + apiKey
-
-	fmt.Println("Etherscan client initialized with base URL:", baseURL)
 
 	return &Client{
 		baseURL:    baseURL,

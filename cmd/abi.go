@@ -2,11 +2,22 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/MqllR/abitool/cmd/abi"
 )
 
 func init() {
+	// Parent args applied to all subcommands
+	// Chain ID
+	abiCmd.PersistentFlags().IntP("chainid", "c", 1, "Chain ID (e.g., 1 for Ethereum Mainnet)")
+	// ABI storage
+	abiCmd.PersistentFlags().StringP("abi-store", "s", "$HOME/.config/abitool/abis/", "Directory to store ABI files")
+
+	// Viper config to bind args
+	viper.BindPFlag("chainid", abiCmd.PersistentFlags().Lookup("chainid"))
+	viper.BindPFlag("abi-store", abiCmd.PersistentFlags().Lookup("abi-store"))
+
 	abiCmd.AddCommand(abi.DownloadCmd)
 	abiCmd.AddCommand(abi.DeleteCmd)
 }
