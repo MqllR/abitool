@@ -3,6 +3,7 @@ package contract
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"path/filepath"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/MqllR/abitool/internal/abitool"
+	"github.com/MqllR/abitool/pkg/abiparser"
 	"github.com/MqllR/abitool/pkg/etherscan"
 	"github.com/MqllR/abitool/pkg/storage/abi"
 	"github.com/MqllR/abitool/pkg/storage/contract"
@@ -65,7 +67,7 @@ func NewABIManager(logger *log.Logger) (*ABIManager, error) {
 	}, nil
 }
 
-// DownloadAndStoreABI downloads the ABI for a given contract address from Etherscan and stores it locally
+// DownloadAndStoreABI downloads the ABI for a given contract address from Etherscan and stores it
 func (a *ABIManager) DownloadAndStoreABI(ctx context.Context, address string) error {
 	contractInfo, err := a.GetContract(address) // Check if contract already exists
 	if err == nil && contractInfo != nil {
@@ -101,6 +103,7 @@ func (a *ABIManager) DownloadAndStoreABI(ctx context.Context, address string) er
 	return nil
 }
 
+// DeleteWithABI deletes the ABI and metadata for a given contract address from the storage
 func (a *ABIManager) DeleteWithABI(ctx context.Context, address string) error {
 	_, err := a.GetContract(address) // Check if contract already exists
 	if err != nil {
@@ -124,4 +127,23 @@ func (a *ABIManager) DeleteWithABI(ctx context.Context, address string) error {
 	a.log.Println("ABI and metadata deleted successfully.")
 
 	return nil
+}
+
+// GetABI retrieves the ABI for a given contract address from the storage
+func (a *ABIManager) GetABI(ctx context.Context, address string) (*abiparser.ABI, error) {
+	_, err := a.GetContract(address) // Check if contract already exists
+	if err != nil {
+		if err == contract.ErrNotFound {
+			return nil, err
+		}
+
+		return nil, fmt.Errorf("failed to get contract: %w", err)
+	}
+
+	bABI, err := a.abiStore.Read(address)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read ABI from store: %w", err)
+	}
+
+	return abiparser.ParseABI(bABI)
 }
