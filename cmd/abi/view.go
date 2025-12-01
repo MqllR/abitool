@@ -1,7 +1,6 @@
 package abi
 
 import (
-	"fmt"
 	"log"
 	"os"
 
@@ -9,7 +8,6 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/MqllR/abitool/internal/contract"
-	scontract "github.com/MqllR/abitool/pkg/storage/contract"
 )
 
 func init() {
@@ -43,21 +41,8 @@ func view(cmd *cobra.Command, args []string) {
 		log.Fatalf("Error creating ABI manager: %v", err)
 	}
 
-	abi, err := abiManager.GetABI(ctx, args[0])
-	if err != nil {
-		if err == scontract.ErrNotFound {
-			log.Println("Contract not found. Download the ABI first.")
-			os.Exit(1)
-		}
-
-		log.Println("Unexpected error:", err)
-	}
-
-	prettyABI, err := contract.Print(abi)
-	if err != nil {
-		log.Fatalf("Error pretty printing ABI: %v", err)
+	if err := abiManager.ViewABI(ctx, args[0], os.Stdout); err != nil {
+		log.Println(err)
 		os.Exit(1)
 	}
-
-	fmt.Fprint(os.Stdout, prettyABI)
 }

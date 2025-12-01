@@ -7,17 +7,7 @@ import (
 	"github.com/MqllR/abitool/pkg/storage/contract"
 )
 
-type Metadata struct {
-	ContractName string `json:"contract_name"`
-	ABIPath      string `json:"abi_path"`
-}
-
-type Contract struct {
-	Address  string   `json:"address"`
-	Metadata Metadata `json:"metadata"`
-}
-
-func (a *ABIManager) GetContract(address string) (*Contract, error) {
+func (a *ABIManager) getContract(address string) (*Contract, error) {
 	rawMeta, err := a.contractStore.Get(address)
 	if err != nil {
 		if err == contract.ErrNotFound {
@@ -38,7 +28,26 @@ func (a *ABIManager) GetContract(address string) (*Contract, error) {
 	}, nil
 }
 
-func (a *ABIManager) SaveContractWithABI(address string, meta *Metadata, abi string) error {
+func (a *ABIManager) listContracts() ([]*Contract, error) {
+	contractIter, err := a.contractStore.List()
+	if err != nil {
+		return nil, fmt.Errorf("listing contracts: %w", err)
+	}
+
+	var contracts []*Contract
+
+	for address := range contractIter {
+		c, err := a.getContract(address)
+		if err != nil {
+			return nil, fmt.Errorf("getting contract %s: %w", address, err)
+		}
+		contracts = append(contracts, c)
+	}
+
+	return contracts, nil
+}
+
+func (a *ABIManager) saveContractWithABI(address string, meta *Metadata, abi string) error {
 	_, err := a.contractStore.Get(address)
 	if err != nil {
 		if err != contract.ErrNotFound {

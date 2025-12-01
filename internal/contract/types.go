@@ -1,9 +1,19 @@
 package contract
 
-type Printer interface {
-	Print() (string, error)
+type Metadata struct {
+	ContractName string `json:"contract_name"`
+	ABIPath      string `json:"abi_path"`
 }
 
-func NoopPrinter(_ string) (string, error) {
-	return "", nil
+type Contract struct {
+	Address  string   `json:"address"`
+	Metadata Metadata `json:"metadata"`
+}
+
+func (c *Contract) HasABI() bool {
+	return c.Metadata.ABIPath != ""
+}
+
+func (c *Contract) Name() string {
+	return c.Metadata.ContractName
 }

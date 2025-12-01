@@ -7,6 +7,8 @@ import (
 	"net/http"
 )
 
+const etherscanBaseURL = "https://api.etherscan.io/v2/api"
+
 type ChainID string
 
 var Mainnet ChainID = "1"
@@ -28,7 +30,7 @@ type Client struct {
 }
 
 func NewClient(apiKey string, chainID ChainID) *Client {
-	baseURL := "https://api.etherscan.io/v2/api"
+	baseURL := etherscanBaseURL
 	baseURL += "?chainid=" + string(chainID)
 	baseURL += "&apikey=" + apiKey
 

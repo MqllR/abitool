@@ -4,7 +4,7 @@
 
 - [x] stringify ABI function inputs
 - [x] ABI function selector
-- [] abicmd list command: to list all the stored ABIs
+- [x] abicmd list command: to list all the stored ABIs
 
 In another group of commands:
 

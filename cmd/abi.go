@@ -21,6 +21,7 @@ func init() {
 	abiCmd.AddCommand(abi.DownloadCmd)
 	abiCmd.AddCommand(abi.DeleteCmd)
 	abiCmd.AddCommand(abi.ViewCmd)
+	abiCmd.AddCommand(abi.ListCmd)
 }
 
 // abiCmd centralizes the ABI related commands.

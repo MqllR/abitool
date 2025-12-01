@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"path/filepath"
 	"strconv"
@@ -69,7 +70,7 @@ func NewABIManager(logger *log.Logger) (*ABIManager, error) {
 
 // DownloadAndStoreABI downloads the ABI for a given contract address from Etherscan and stores it
 func (a *ABIManager) DownloadAndStoreABI(ctx context.Context, address string) error {
-	contractInfo, err := a.GetContract(address) // Check if contract already exists
+	contractInfo, err := a.getContract(address) // Check if contract already exists
 	if err == nil && contractInfo != nil {
 		a.log.Printf("Contract with address %s already exists. Skipping download.", address)
 
@@ -90,7 +91,7 @@ func (a *ABIManager) DownloadAndStoreABI(ctx context.Context, address string) er
 		ContractName: contract.ContractName,
 	}
 
-	err = a.SaveContractWithABI(
+	err = a.saveContractWithABI(
 		address,
 		&meta,
 		contract.ABI,
@@ -105,7 +106,7 @@ func (a *ABIManager) DownloadAndStoreABI(ctx context.Context, address string) er
 
 // DeleteWithABI deletes the ABI and metadata for a given contract address from the storage
 func (a *ABIManager) DeleteWithABI(ctx context.Context, address string) error {
-	_, err := a.GetContract(address) // Check if contract already exists
+	_, err := a.getContract(address) // Check if contract already exists
 	if err != nil {
 		if err != contract.ErrNotFound {
 			return err
@@ -129,21 +130,44 @@ func (a *ABIManager) DeleteWithABI(ctx context.Context, address string) error {
 	return nil
 }
 
-// GetABI retrieves the ABI for a given contract address from the storage
-func (a *ABIManager) GetABI(ctx context.Context, address string) (*abiparser.ABI, error) {
-	_, err := a.GetContract(address) // Check if contract already exists
+// ViewABI retrieves the ABI for a given contract address from the storage
+func (a *ABIManager) ViewABI(ctx context.Context, address string, out io.Writer) error {
+	_, err := a.getContract(address) // Check if contract already exists
 	if err != nil {
 		if err == contract.ErrNotFound {
-			return nil, err
+			return err
 		}
 
-		return nil, fmt.Errorf("failed to get contract: %w", err)
+		return fmt.Errorf("failed to get contract: %w", err)
 	}
 
 	bABI, err := a.abiStore.Read(address)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read ABI from store: %w", err)
+		return fmt.Errorf("failed to read ABI from store: %w", err)
 	}
 
-	return abiparser.ParseABI(bABI)
+	parsedABI, err := abiparser.ParseABI(bABI)
+	if err != nil {
+		return fmt.Errorf("failed to parse ABI: %w", err)
+	}
+
+	PrintedABI, err := Print(parsedABI)
+	if err != nil {
+		return fmt.Errorf("failed to print ABI: %w", err)
+	}
+
+	fmt.Fprintln(out, PrintedABI)
+
+	return nil
+}
+
+func (a *ABIManager) ListABIs(ctx context.Context, out io.Writer) error {
+	contracts, err := a.listContracts()
+	if err != nil {
+		return fmt.Errorf("listing contracts: %w", err)
+	}
+
+	fmt.Fprintln(out, PrintContractList(contracts))
+
+	return nil
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"iter"
 	"os"
 	"path/filepath"
 )
@@ -96,6 +97,22 @@ func (l *Local) Delete(address string) error {
 	}
 
 	return nil
+}
+
+// All return an iterator over all ABI elements.
+func (l *Local) List() (iter.Seq[string], error) {
+	contracts, err := l.getContracts()
+	if err != nil {
+		return nil, fmt.Errorf("loading contracts: %w", err)
+	}
+
+	return func(yield func(string) bool) {
+		for address := range contracts {
+			if !yield(address) {
+				return
+			}
+		}
+	}, nil
 }
 
 // getContracts reads the contracts.json file and returns the contracts map
