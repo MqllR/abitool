@@ -12,39 +12,39 @@ import (
 func Print(abi *abiparser.ABI) (string, error) {
 	t := viper.GetString("abi-view-type")
 
-	var newABI abiparser.ABI
+	var filtered abiparser.ABI
 
 	switch t {
 	case "all":
-		newABI = *abi
+		filtered = *abi
 	case "function":
 		for el := range abi.All() {
 			if el.IsFunction() {
-				newABI = append(newABI, el)
+				filtered = append(filtered, el)
 			}
 		}
 	case "event":
 		for el := range abi.All() {
 			if el.Type == abiparser.EventType {
-				newABI = append(newABI, el)
+				filtered = append(filtered, el)
 			}
 		}
 	case "constructor":
 		for el := range abi.All() {
 			if el.Type == abiparser.ConstructorType {
-				newABI = append(newABI, el)
+				filtered = append(filtered, el)
 			}
 		}
 	case "fallback":
 		for el := range abi.All() {
 			if el.Type == abiparser.FallbackType {
-				newABI = append(newABI, el)
+				filtered = append(filtered, el)
 			}
 		}
 	case "receive":
 		for el := range abi.All() {
 			if el.Type == abiparser.ReceiveType {
-				newABI = append(newABI, el)
+				filtered = append(filtered, el)
 			}
 		}
 	default:
@@ -55,9 +55,12 @@ func Print(abi *abiparser.ABI) (string, error) {
 
 	switch viper.GetString("abi-view-output") {
 	case "json":
-		abiPrinter = abiparser.NewPrettyPrinter(&newABI)
+		abiPrinter = abiparser.NewPrettyPrinter(&filtered)
 	case "table":
-		abiPrinter = abiparser.NewTablePrinter(&newABI)
+		abiPrinter = abiparser.NewTablePrinter(&filtered)
+		if viper.GetBool("abi-view-with-intput-name") {
+			abiPrinter = abiparser.NewTablePrinter(&filtered, abiparser.WithInputNames())
+		}
 	default:
 		return "", fmt.Errorf("unsupported ABI print format: %s", viper.GetString("abi-print-format"))
 	}
