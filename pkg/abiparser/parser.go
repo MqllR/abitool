@@ -14,12 +14,17 @@ type ABI []Element
 
 type Element struct {
 	Inputs          []Input         `json:"inputs"`
+	Outputs         []Output        `json:"outputs,omitempty"`
 	StateMutability StateMutability `json:"stateMutability"`
 	Type            Type            `json:"type"`
 	Name            string          `json:"name"`
 }
 
 type Input struct {
+	Parameter
+}
+
+type Output struct {
 	Parameter
 }
 

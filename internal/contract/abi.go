@@ -2,10 +2,12 @@ package contract
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"path/filepath"
 	"strconv"
 
@@ -33,13 +35,12 @@ type ABIManager struct {
 	abiStore        *abi.Local
 }
 
-// NewABIManager creates a new instance of ABIManager. It instanciates the storage and etherscan client.
+// NewABIManager creates a new instance of ABIManager. It initialises the storage backends and,
+// if an Etherscan API key is configured, the Etherscan client. Commands that only need local
+// storage (e.g. import) work without an API key; DownloadAndStoreABI will return an error if
+// the client is not available.
 func NewABIManager(logger *log.Logger) (*ABIManager, error) {
 	cfg := abitool.ConfigInstance()
-
-	if cfg.EtherScan.APIKey == "" {
-		return nil, ErrEtherscanAPIKeyNotSet
-	}
 
 	storeCfg := viper.GetString("abi-store")
 	chainIdCfg := viper.GetInt("chainid")
@@ -47,8 +48,6 @@ func NewABIManager(logger *log.Logger) (*ABIManager, error) {
 	if _, ok := SupportedChainIDs[chainIdCfg]; !ok {
 		return nil, errors.New("unsupported chain ID")
 	}
-
-	etherscanClient := etherscan.NewClient(cfg.EtherScan.APIKey, etherscan.FromInt(chainIdCfg))
 
 	contractStore, err := contract.NewLocal(filepath.Join(storeCfg, strconv.Itoa(chainIdCfg)))
 	if err != nil {
@@ -60,16 +59,25 @@ func NewABIManager(logger *log.Logger) (*ABIManager, error) {
 		return nil, err
 	}
 
-	return &ABIManager{
-		log:             logger,
-		etherscanClient: etherscanClient,
-		contractStore:   contractStore,
-		abiStore:        abiStore,
-	}, nil
+	m := &ABIManager{
+		log:           logger,
+		contractStore: contractStore,
+		abiStore:      abiStore,
+	}
+
+	if cfg.EtherScan.APIKey != "" {
+		m.etherscanClient = etherscan.NewClient(cfg.EtherScan.APIKey, etherscan.FromInt(chainIdCfg))
+	}
+
+	return m, nil
 }
 
 // DownloadAndStoreABI downloads the ABI for a given contract address from Etherscan and stores it
 func (a *ABIManager) DownloadAndStoreABI(ctx context.Context, address string) error {
+	if a.etherscanClient == nil {
+		return ErrEtherscanAPIKeyNotSet
+	}
+
 	contractInfo, err := a.getContract(address) // Check if contract already exists
 	if err == nil && contractInfo != nil {
 		a.log.Printf("Contract with address %s already exists. Skipping download.", address)
@@ -169,6 +177,47 @@ func (a *ABIManager) ListABIs(ctx context.Context, out io.Writer) error {
 	}
 
 	_, _ = fmt.Fprintln(out, PrintContractList(contracts))
+
+	return nil
+}
+
+// ImportABI reads an ABI from a local file and stores it under the given address.
+// If name is empty, the address is used as the contract name.
+// If an entry for the address already exists and force is false, an error is returned.
+func (a *ABIManager) ImportABI(ctx context.Context, address, filePath, name string, force bool) error {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to read ABI file: %w", err)
+	}
+
+	if !json.Valid(data) {
+		return fmt.Errorf("file does not contain valid JSON: %s", filePath)
+	}
+
+	if name == "" {
+		name = address
+	}
+
+	existing, err := a.getContract(address)
+	if err == nil && existing != nil {
+		if !force {
+			return fmt.Errorf("contract with address %s already exists; use --force to overwrite", address)
+		}
+
+		if err := a.DeleteWithABI(ctx, address); err != nil {
+			return fmt.Errorf("failed to remove existing contract before overwrite: %w", err)
+		}
+	}
+
+	meta := Metadata{
+		ContractName: name,
+	}
+
+	if err := a.saveContractWithABI(address, &meta, string(data)); err != nil {
+		return err
+	}
+
+	a.log.Println("ABI imported successfully.")
 
 	return nil
 }

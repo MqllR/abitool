@@ -17,6 +17,7 @@ func init() {
 	}
 
 	rootCmd.AddCommand(abiCmd)
+	rootCmd.AddCommand(rpcCmd)
 }
 
 var rootCmd = &cobra.Command{

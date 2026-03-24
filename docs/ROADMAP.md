@@ -19,6 +19,20 @@ The following correctness issues are queued for fixing before new features land:
 
 See `AGENTS.md` for details on each issue.
 
+### `abitool rpc call` — Read-only contract calls (`eth_call`) ⚙️ In progress
+
+Implemented in `internal/contract/call.go`, `pkg/ethclient/`, `pkg/abicodec/`, `cmd/rpc/call.go`.
+
+Interactive argument prompting uses a bubbletea TUI form (`internal/ui/form.go`).
+
+Remaining work:
+- Array / tuple argument support in `pkg/abicodec/codec.go`
+- Named output display (show output parameter names alongside values)
+
+### `outputs` field in stored ABIs ✅ Done
+
+`Outputs []Output` added to `abiparser.Element`. Return values from `eth_call` are now decoded using stored output types.
+
 ---
 
 ## Planned features
@@ -58,19 +72,11 @@ Decode raw hex calldata or return data back into human-readable form.
 
 ---
 
-### `abitool rpc call` — Read-only contract calls (`eth_call`)
+### `abitool rpc call` — Read-only contract calls (`eth_call`) ✅ Implemented
 
-Call a view/pure contract function and display the decoded result.
+See *In progress* section above for current status and remaining work.
 
-**Motivation:** The most common interaction with a smart contract is a read. This should require no wallet, no gas estimation, and no signing.
-
-**Scope:**
-- Accept a contract address, function name, and arguments
-- Encode calldata (via encode feature above)
-- Send `eth_call` via JSON-RPC
-- Decode and display the return value
-
-**Configuration additions needed:**
+**Configuration:**
 ```yaml
 rpc:
   url: "https://mainnet.infura.io/v3/YOUR_KEY"
@@ -132,9 +138,9 @@ The Etherscan v2 API already supports all these via the `chainid` parameter. RPC
 
 ---
 
-### `outputs` field in stored ABIs
+### `outputs` field in stored ABIs ✅ Done
 
-Currently only `inputs` are used. Add `outputs` to the `Element` struct and storage so that return values from `eth_call` can be decoded.
+`Outputs []Output` added to `abiparser.Element` in `pkg/abiparser/parser.go`. Return values from `eth_call` are decoded using the stored output types.
 
 ---
 
