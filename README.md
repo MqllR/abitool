@@ -15,6 +15,16 @@ A CLI tool that provides a simple human-friendly interface to Ethereum smart con
 go install github.com/MqllR/abitool@latest
 ```
 
+## Development
+
+Build from source and run pre-checks before submitting changes:
+
+```bash
+make build  # compile the binary
+make test   # run all tests
+make lint   # run golangci-lint (requires golangci-lint to be installed)
+```
+
 Or build from source:
 
 ```bash

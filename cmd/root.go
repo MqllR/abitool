@@ -12,7 +12,9 @@ import (
 func init() {
 	rootCmd.PersistentFlags().StringP("config", "f", "$HOME/.config/abitool/config.yaml", "Path to configuration file")
 
-	viper.BindPFlag("config", rootCmd.PersistentFlags().Lookup("config"))
+	if err := viper.BindPFlag("config", rootCmd.PersistentFlags().Lookup("config")); err != nil {
+		panic(err)
+	}
 
 	rootCmd.AddCommand(abiCmd)
 }

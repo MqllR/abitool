@@ -15,8 +15,12 @@ func init() {
 	abiCmd.PersistentFlags().StringP("abi-store", "s", "$HOME/.config/abitool/abis/", "Directory to store ABI files")
 
 	// Viper config to bind args
-	viper.BindPFlag("chainid", abiCmd.PersistentFlags().Lookup("chainid"))
-	viper.BindPFlag("abi-store", abiCmd.PersistentFlags().Lookup("abi-store"))
+	if err := viper.BindPFlag("chainid", abiCmd.PersistentFlags().Lookup("chainid")); err != nil {
+		panic(err)
+	}
+	if err := viper.BindPFlag("abi-store", abiCmd.PersistentFlags().Lookup("abi-store")); err != nil {
+		panic(err)
+	}
 
 	abiCmd.AddCommand(abi.DownloadCmd)
 	abiCmd.AddCommand(abi.DeleteCmd)

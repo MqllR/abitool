@@ -21,13 +21,13 @@ type Element struct {
 
 type Input struct {
 	Parameter
-	Components []Parameter `json:"components,omitempty"`
 }
 
 type Parameter struct {
-	Name         string `json:"name"`
-	InternalType string `json:"internalType"`
-	Type         string `json:"type"`
+	Name         string      `json:"name"`
+	InternalType string      `json:"internalType"`
+	Type         string      `json:"type"`
+	Components   []Parameter `json:"components,omitempty"`
 }
 
 func ParseABI(abiJSON string) (*ABI, error) {
@@ -55,24 +55,36 @@ func (e *Element) IsFunction() bool {
 	return e.Type == FunctionType
 }
 
+// canonicalType returns the canonical ABI type string for a parameter, recursively expanding
+// tuple types into their component form: e.g. "tuple" → "(uint256,address)".
+// Array suffixes on tuples (e.g. "tuple[]", "tuple[3]") are preserved.
+func canonicalType(p Parameter) string {
+	if len(p.Components) == 0 {
+		return p.Type
+	}
+
+	var parts []string
+	for _, comp := range p.Components {
+		parts = append(parts, canonicalType(comp))
+	}
+
+	// Strip the "tuple" prefix but keep any array suffix (e.g. "[]", "[3]").
+	suffix := strings.TrimPrefix(p.Type, "tuple")
+	return "(" + strings.Join(parts, ",") + ")" + suffix
+}
+
 // Signature computes the function signature which is defined as "functionName(type1,type2,...)"
 func (e *Element) Signature() (string, error) {
-	var signature string
 	if !e.IsFunction() {
 		return "", fmt.Errorf("element is not a function")
 	}
 
-	signature += e.Name + "("
-	if len(e.Inputs) > 0 {
-		var inputTypes []string
-		for _, input := range e.Inputs {
-			inputTypes = append(inputTypes, input.Type)
-		}
-		signature += strings.Join(inputTypes, ",")
+	var inputTypes []string
+	for _, input := range e.Inputs {
+		inputTypes = append(inputTypes, canonicalType(input.Parameter))
 	}
 
-	signature += ")"
-	return signature, nil
+	return e.Name + "(" + strings.Join(inputTypes, ",") + ")", nil
 }
 
 // Selector computes the function selector which is the first 4 bytes of the Keccak-256 hash of the function signature.

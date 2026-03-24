@@ -97,13 +97,7 @@ The `api_key` field is the only required config value. All other settings have d
 
 ## Known open issues (as of last review)
 
-1. **Tuple types in signatures** — `Signature()` emits `tuple` instead of expanding components, producing wrong selectors for structs. (`pkg/abiparser/parser.go`)
-2. **`sync.Once` error not persisted** — a failed `Load()` call cannot be retried, but subsequent calls return `nil`. (`internal/abitool/app.go`)
-3. **Etherscan API-level errors ignored** — only HTTP status is checked; `status:"0"` in JSON body is not validated. (`pkg/etherscan/client.go`)
-4. **URL injection** — contract addresses are concatenated raw into query strings. (`pkg/etherscan/contract.go`)
-5. **Orphaned ABI files** — if metadata save fails after ABI file is written, no rollback occurs. (`internal/contract/storage.go`)
-6. **`DeleteWithABI` error comparison** — uses `!=` on a wrapped error; should use `errors.Is`. (`internal/contract/abi.go`)
-7. **Implicit `return c, err`** — final return in `getContracts` should be `return c, nil`. (`pkg/storage/contract/local.go`)
+All issues from the initial code review have been resolved. See `docs/ROADMAP.md` for planned features.
 
 ## Adding a new command
 
@@ -121,4 +115,11 @@ Add the chain ID to `SupportedChainIDs` in `internal/contract/config.go`. The Et
 ```bash
 go build -o abitool .
 go test ./...
+```
+
+Before submitting changes, run the pre-checks:
+
+```bash
+make lint   # requires golangci-lint
+make test
 ```

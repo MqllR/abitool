@@ -106,13 +106,14 @@ func (a *ABIManager) DownloadAndStoreABI(ctx context.Context, address string) er
 
 // DeleteWithABI deletes the ABI and metadata for a given contract address from the storage
 func (a *ABIManager) DeleteWithABI(ctx context.Context, address string) error {
-	_, err := a.getContract(address) // Check if contract already exists
+	_, err := a.getContract(address)
 	if err != nil {
-		if err != contract.ErrNotFound {
-			return err
+		if errors.Is(err, contract.ErrNotFound) {
+			a.log.Printf("Contract with address %s does not exist. Nothing to delete.", address)
+			return nil
 		}
 
-		a.log.Printf("Contract with address %s does not exist. Nothing to delete.", address)
+		return err
 	}
 
 	a.log.Printf("Deleting ABI and metadata for contract address: %s", address)
@@ -156,7 +157,7 @@ func (a *ABIManager) ViewABI(ctx context.Context, address string, out io.Writer)
 		return fmt.Errorf("failed to print ABI: %w", err)
 	}
 
-	fmt.Fprintln(out, PrintedABI)
+	_, _ = fmt.Fprintln(out, PrintedABI)
 
 	return nil
 }
@@ -167,7 +168,7 @@ func (a *ABIManager) ListABIs(ctx context.Context, out io.Writer) error {
 		return fmt.Errorf("listing contracts: %w", err)
 	}
 
-	fmt.Fprintln(out, PrintContractList(contracts))
+	_, _ = fmt.Fprintln(out, PrintContractList(contracts))
 
 	return nil
 }

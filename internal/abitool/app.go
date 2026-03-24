@@ -2,47 +2,48 @@ package abitool
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"sync"
 
 	"github.com/spf13/viper"
 )
 
-var once sync.Once
+var (
+	once    sync.Once
+	loadErr error
+)
 
 func Load() error {
-	var err error
-
 	once.Do(func() {
 		var c Config
 
 		configPath := viper.GetString("config")
 		cfgWithEnv := os.ExpandEnv(configPath)
 
-		var fh io.ReadCloser
-		fh, err = os.Open(cfgWithEnv)
+		fh, err := os.Open(cfgWithEnv)
 		if err != nil {
+			loadErr = err
 			return
 		}
-		defer fh.Close()
+		defer func() { _ = fh.Close() }()
 
 		viper.SetConfigType("yaml")
 
-		err = viper.ReadConfig(fh)
-		if err != nil {
+		if err = viper.ReadConfig(fh); err != nil {
+			loadErr = err
 			return
 		}
 
-		err = viper.Unmarshal(&c)
-		if err != nil {
+		if err = viper.Unmarshal(&c); err != nil {
+			loadErr = err
 			return
 		}
+
 		cfg = c
 	})
 
-	if err != nil {
-		return fmt.Errorf("loading config: %w", err)
+	if loadErr != nil {
+		return fmt.Errorf("loading config: %w", loadErr)
 	}
 
 	return nil

@@ -15,9 +15,15 @@ func init() {
 	ViewCmd.Flags().StringP("type", "t", "all", "Filter by function type: all, function, event, constructor, fallback, receive")
 	ViewCmd.Flags().Bool("with-input-name", false, "Display input parameter names in table output")
 
-	viper.BindPFlag("abi-view-output", ViewCmd.Flags().Lookup("output"))
-	viper.BindPFlag("abi-view-type", ViewCmd.Flags().Lookup("type"))
-	viper.BindPFlag("abi-view-with-intput-name", ViewCmd.Flags().Lookup("with-input-name"))
+	if err := viper.BindPFlag("abi-view-output", ViewCmd.Flags().Lookup("output")); err != nil {
+		panic(err)
+	}
+	if err := viper.BindPFlag("abi-view-type", ViewCmd.Flags().Lookup("type")); err != nil {
+		panic(err)
+	}
+	if err := viper.BindPFlag("abi-view-with-intput-name", ViewCmd.Flags().Lookup("with-input-name")); err != nil {
+		panic(err)
+	}
 }
 
 // viewCmd displays a contract's ABI by its address.

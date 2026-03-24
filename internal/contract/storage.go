@@ -63,10 +63,12 @@ func (a *ABIManager) saveContractWithABI(address string, meta *Metadata, abi str
 
 	rawMeta, err := json.Marshal(meta)
 	if err != nil {
+		_ = a.abiStore.Delete(address)
 		return fmt.Errorf("marshaling contract metadata: %w", err)
 	}
 
 	if err := a.contractStore.Add(address, rawMeta); err != nil {
+		_ = a.abiStore.Delete(address)
 		return fmt.Errorf("adding contract to store: %w", err)
 	}
 

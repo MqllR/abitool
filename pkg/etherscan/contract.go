@@ -8,9 +8,7 @@ import (
 // GetABI retrieves the ABI for a given contract address.
 // https://docs.etherscan.io/api-endpoints/contracts#get-contract-abi-for-verified-contract-source-codes
 func (c *Client) GetABI(ctx context.Context, address string) (string, error) {
-	url := c.baseURL + "&module=contract&action=getabi&address=" + address
-
-	resp, err := c.call(ctx, url)
+	resp, err := c.call(ctx, c.buildURL("contract", "getabi", address))
 	if err != nil {
 		return "", fmt.Errorf("calling etherscan: %w", err)
 	}
@@ -26,9 +24,7 @@ func (c *Client) GetABI(ctx context.Context, address string) (string, error) {
 // GetSourceCode retrieves the source code for a given contract address.
 // https://docs.etherscan.io/api-endpoints/contracts#get-contract-source-code-for-verified-contract-source-codes
 func (c *Client) GetSourceCode(ctx context.Context, address string) (*ContractSourceCodeResponse, error) {
-	url := c.baseURL + "&module=contract&action=getsourcecode&address=" + address
-
-	resp, err := c.call(ctx, url)
+	resp, err := c.call(ctx, c.buildURL("contract", "getsourcecode", address))
 	if err != nil {
 		return nil, fmt.Errorf("calling etherscan: %w", err)
 	}

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 )
 
 const etherscanBaseURL = "https://api.etherscan.io/v2/api"
@@ -25,24 +26,34 @@ type response struct {
 }
 
 type Client struct {
-	baseURL    string
+	chainID    ChainID
+	apiKey     string
 	httpClient *http.Client
 }
 
 func NewClient(apiKey string, chainID ChainID) *Client {
-	baseURL := etherscanBaseURL
-	baseURL += "?chainid=" + string(chainID)
-	baseURL += "&apikey=" + apiKey
-
 	return &Client{
-		baseURL:    baseURL,
+		chainID:    chainID,
+		apiKey:     apiKey,
 		httpClient: &http.Client{},
 	}
 }
 
-// call sends the requests to etherscan and return the structured response
-func (c *Client) call(ctx context.Context, url string) (*response, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
+// buildURL constructs a safe Etherscan API URL using url.Values to prevent query-parameter injection.
+func (c *Client) buildURL(module, action, address string) string {
+	q := url.Values{}
+	q.Set("chainid", string(c.chainID))
+	q.Set("apikey", c.apiKey)
+	q.Set("module", module)
+	q.Set("action", action)
+	q.Set("address", address)
+	return etherscanBaseURL + "?" + q.Encode()
+}
+
+// call sends the request to Etherscan and returns the structured response.
+// It validates both the HTTP status code and the API-level status field in the JSON body.
+func (c *Client) call(ctx context.Context, rawURL string) (*response, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -51,15 +62,19 @@ func (c *Client) call(ctx context.Context, url string) (*response, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("status ok is not ok: %v", resp.StatusCode)
+		return nil, fmt.Errorf("unexpected HTTP status: %v", resp.StatusCode)
 	}
 
 	var jsonResp response
 	if err := json.NewDecoder(resp.Body).Decode(&jsonResp); err != nil {
 		return nil, fmt.Errorf("decoding response: %w", err)
+	}
+
+	if jsonResp.Status != "1" {
+		return nil, fmt.Errorf("etherscan error: %s - %v", jsonResp.Message, jsonResp.Result)
 	}
 
 	return &jsonResp, nil

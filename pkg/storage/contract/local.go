@@ -127,13 +127,13 @@ func (l *Local) getContracts() (contracts, error) {
 
 		return nil, fmt.Errorf("opening contracts file: %w", err)
 	}
-	defer fh.Close()
+	defer func() { _ = fh.Close() }()
 
 	if err := json.NewDecoder(fh).Decode(&c); err != nil {
 		return c, fmt.Errorf("reading contracts file: %w", err)
 	}
 
-	return c, err
+	return c, nil
 }
 
 // saveContracts writes the contracts map to the contracts.json file
@@ -142,10 +142,12 @@ func (l *Local) saveContracts(c contracts) error {
 	if err != nil {
 		return fmt.Errorf("opening contracts file: %w", err)
 	}
-	defer fh.Close()
-
 	if err := json.NewEncoder(fh).Encode(c); err != nil {
 		return fmt.Errorf("writing contracts file: %w", err)
+	}
+
+	if err := fh.Close(); err != nil {
+		return fmt.Errorf("closing contracts file: %w", err)
 	}
 
 	return nil
