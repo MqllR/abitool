@@ -5,6 +5,29 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+
+	"github.com/charmbracelet/lipgloss"
+)
+
+// ─── Table styles ─────────────────────────────────────────────────────────────
+
+var (
+	tableHeaderStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#F8F8F2"))
+	tableSepStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("#44475A"))
+
+	tableTypeFunction    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#4BAFED"))
+	tableTypeEvent       = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#F9D449"))
+	tableTypeError       = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FF5555"))
+	tableTypeConstructor = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#50FA7B"))
+	tableTypeFallback    = lipgloss.NewStyle().Foreground(lipgloss.Color("#6272A4"))
+
+	tableSelectorStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#BD93F9"))
+	tableSelectorNA     = lipgloss.NewStyle().Foreground(lipgloss.Color("#44475A"))
+	tableMutViewStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("#50FA7B"))
+	tableMutPayStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("#F9D449"))
+	tableMutDefaultStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#6272A4"))
+	tableNameStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("#F8F8F2"))
+	tableInputStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("#8BE9FD"))
 )
 
 type PrettyPrinter struct {
@@ -62,55 +85,105 @@ func (p *TablePrinter) Print() (string, error) {
 
 	var b bytes.Buffer
 
-	// Table headers
 	headers := []string{"Type", "Name", "Inputs", "Selector", "StateMutability"}
-	colWidths := make([]int, len(headers))
-	copy(colWidths, []int{len(headers[0]), len(headers[1]), len(headers[2]), len(headers[3]), len(headers[4])})
+	colWidths := []int{len(headers[0]), len(headers[1]), len(headers[2]), len(headers[3]), len(headers[4])}
 
-	// Collect all rows
-	var rows [][]string
+	// Collect raw (unstyled) rows to measure column widths.
+	type rawRow struct {
+		typ      string
+		name     string
+		inputs   string
+		selector string
+		mut      string
+	}
+	var raws []rawRow
 	for element := range p.a.All() {
 		selector, err := element.Selector()
 		if err != nil {
 			selector = "N/A"
 		}
-
-		row := []string{
-			string(element.Type),
-			element.Name,
-			p.formatInputTypes(element.Inputs),
-			selector,
-			string(element.StateMutability),
+		r := rawRow{
+			typ:      string(element.Type),
+			name:     element.Name,
+			inputs:   p.formatInputTypes(element.Inputs),
+			selector: selector,
+			mut:      string(element.StateMutability),
 		}
-		rows = append(rows, row)
-		for i, cell := range row {
-			if len(cell) > colWidths[i] {
-				colWidths[i] = len(cell)
+		cells := []string{r.typ, r.name, r.inputs, r.selector, r.mut}
+		for i, c := range cells {
+			if len(c) > colWidths[i] {
+				colWidths[i] = len(c)
 			}
 		}
+		raws = append(raws, r)
 	}
 
-	// Print header
+	// Spacing between columns.
+	const gap = 2
+
+	// Helper: pad a styled string to colWidth visible chars.
+	cell := func(styled string, colW int) string {
+		return lipgloss.NewStyle().Width(colW + gap).Render(styled)
+	}
+
+	// ── Header ────────────────────────────────────────────────────────────────
 	for i, h := range headers {
-		fmt.Fprintf(&b, "%-*s ", colWidths[i], h)
+		b.WriteString(cell(tableHeaderStyle.Render(h), colWidths[i]))
 	}
 	b.WriteByte('\n')
 
-	// Print separator
+	// ── Separator ─────────────────────────────────────────────────────────────
+	totalWidth := gap * len(colWidths)
 	for _, w := range colWidths {
-		b.WriteString(strings.Repeat("-", w))
+		totalWidth += w
 	}
+	b.WriteString(tableSepStyle.Render(strings.Repeat("─", totalWidth)))
 	b.WriteByte('\n')
 
-	// Print rows
-	for _, row := range rows {
-		for i, cell := range row {
-			fmt.Fprintf(&b, "%-*s ", colWidths[i], cell)
-		}
+	// ── Rows ──────────────────────────────────────────────────────────────────
+	for _, r := range raws {
+		b.WriteString(cell(styledType(r.typ), colWidths[0]))
+		b.WriteString(cell(tableNameStyle.Render(r.name), colWidths[1]))
+		b.WriteString(cell(tableInputStyle.Render(r.inputs), colWidths[2]))
+		b.WriteString(cell(styledSelector(r.selector), colWidths[3]))
+		b.WriteString(cell(styledMutability(r.mut), colWidths[4]))
 		b.WriteByte('\n')
 	}
 
 	return b.String(), nil
+}
+
+func styledType(t string) string {
+	switch Type(t) {
+	case FunctionType:
+		return tableTypeFunction.Render(t)
+	case EventType:
+		return tableTypeEvent.Render(t)
+	case ErrorType:
+		return tableTypeError.Render(t)
+	case ConstructorType:
+		return tableTypeConstructor.Render(t)
+	default:
+		return tableTypeFallback.Render(t)
+	}
+}
+
+func styledSelector(s string) string {
+	if s == "N/A" {
+		return tableSelectorNA.Render(s)
+	}
+	return tableSelectorStyle.Render(s)
+}
+
+func styledMutability(m string) string {
+	switch m {
+	case "view", "pure":
+		return tableMutViewStyle.Render(m)
+	case "payable":
+		return tableMutPayStyle.Render(m)
+	default:
+		return tableMutDefaultStyle.Render(m)
+	}
 }
 
 func (p *TablePrinter) formatInputTypes(inputs []Input) string {

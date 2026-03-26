@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/MqllR/abitool/internal/abitool"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/MqllR/abitool/internal/abitool"
+	"github.com/MqllR/abitool/internal/ui"
 )
 
 func init() {
@@ -29,6 +31,10 @@ var rootCmd = &cobra.Command{
 			fmt.Println("Error loading config:", err)
 			os.Exit(1)
 		}
+	},
+	// When called with no subcommand, launch the interactive TUI dashboard.
+	RunE: func(cmd *cobra.Command, _ []string) error {
+		return ui.RunApp()
 	},
 }
 

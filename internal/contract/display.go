@@ -4,20 +4,26 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/viper"
 
 	"github.com/MqllR/abitool/pkg/abiparser"
 )
 
+// ─── List styles ──────────────────────────────────────────────────────────────
+
+var (
+	listHeaderStyle   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#F8F8F2"))
+	listSepStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("#44475A"))
+	listAddrStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("#BD93F9"))
+	listNameStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("#F8F8F2"))
+	listABITrueStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#50FA7B"))
+	listABIFalseStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5555"))
+)
+
 type Printer interface {
 	Print() (string, error)
 }
-
-func NoopPrinter(_ string) (string, error) {
-	return "", nil
-}
-
-// PrettyPrint displays ABI in a pretty format.
 func Print(abi *abiparser.ABI) (string, error) {
 	t := viper.GetString("abi-view-type")
 
@@ -80,39 +86,56 @@ func Print(abi *abiparser.ABI) (string, error) {
 func PrintContractList(contracts []*Contract) string {
 	headers := []string{"Address", "Contract Name", "ABI"}
 
-	// Prepare rows
-	rows := make([][]string, len(contracts))
+	const gap = 2
+
+	// Measure column widths from raw content.
+	colWidths := []int{len(headers[0]), len(headers[1]), len(headers[2])}
+	type row struct{ addr, name, hasABI string }
+	rows := make([]row, len(contracts))
 	for i, c := range contracts {
-		rows[i] = []string{c.Address, c.Metadata.ContractName, fmt.Sprintf("%t", c.HasABI())}
-	}
-
-	// Calculate max width for each column
-	colWidths := make([]int, len(headers))
-	for i, h := range headers {
-		colWidths[i] = len(h)
-	}
-	for _, row := range rows {
-		for i, col := range row {
-			if len(col) > colWidths[i] {
-				colWidths[i] = len(col)
-			}
+		abiStr := fmt.Sprintf("%t", c.HasABI())
+		rows[i] = row{c.Address, c.Metadata.ContractName, abiStr}
+		if l := len(c.Address); l > colWidths[0] {
+			colWidths[0] = l
+		}
+		if l := len(c.Metadata.ContractName); l > colWidths[1] {
+			colWidths[1] = l
+		}
+		if l := len(abiStr); l > colWidths[2] {
+			colWidths[2] = l
 		}
 	}
 
-	// Print header
-	var output strings.Builder
+	cell := func(styled string, colW int) string {
+		return lipgloss.NewStyle().Width(colW + gap).Render(styled)
+	}
+
+	totalWidth := gap * len(colWidths)
+	for _, w := range colWidths {
+		totalWidth += w
+	}
+
+	var sb strings.Builder
+
+	// Header
 	for i, h := range headers {
-		fmt.Fprintf(&output, "%-*s", colWidths[i]+2, h)
+		sb.WriteString(cell(listHeaderStyle.Render(h), colWidths[i]))
 	}
-	output.WriteString("\n")
+	sb.WriteByte('\n')
+	sb.WriteString(listSepStyle.Render(strings.Repeat("─", totalWidth)))
+	sb.WriteByte('\n')
 
-	// Print rows
-	for _, row := range rows {
-		for i, col := range row {
-			fmt.Fprintf(&output, "%-*s", colWidths[i]+2, col)
+	// Rows
+	for _, r := range rows {
+		abiStyled := listABIFalseStyle.Render(r.hasABI)
+		if r.hasABI == "true" {
+			abiStyled = listABITrueStyle.Render(r.hasABI)
 		}
-		output.WriteString("\n")
+		sb.WriteString(cell(listAddrStyle.Render(r.addr), colWidths[0]))
+		sb.WriteString(cell(listNameStyle.Render(r.name), colWidths[1]))
+		sb.WriteString(cell(abiStyled, colWidths[2]))
+		sb.WriteByte('\n')
 	}
 
-	return output.String()
+	return sb.String()
 }

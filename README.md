@@ -4,8 +4,9 @@ A CLI tool that provides a simple human-friendly interface to Ethereum smart con
 
 ## Features
 
+- **Interactive TUI** — full-screen dashboard to browse, download and explore stored ABIs
 - **Download** — fetch and cache a contract's ABI from Etherscan by address
-- **View** — inspect functions, events, constructors and their selectors in JSON or table format
+- **View** — inspect functions, events, constructors and their selectors in coloured JSON or table format
 - **List** — show all locally stored contracts
 - **Delete** — remove a stored ABI and its metadata
 
@@ -52,6 +53,46 @@ abitool -f /path/to/config.yaml abi list
 
 ## Usage
 
+### Interactive TUI
+
+Running `abitool` with no arguments opens the interactive dashboard:
+
+```bash
+abitool
+```
+
+The TUI provides a full-screen terminal interface:
+
+```
+╭─────────────────────────────────────╮
+│  ⬡  Ethereum ABI Tool               │
+│                                     │
+│    ❯  Contracts   3 stored          │
+│       Download    fetch a new ABI   │
+│                                     │
+│  ↑↓/jk navigate  enter select  q quit
+╰─────────────────────────────────────╯
+```
+
+**Navigation:**
+
+| Key | Action |
+|---|---|
+| `↑` / `↓` or `j` / `k` | Move selection |
+| `Enter` | Select / drill in |
+| `Esc` or `Backspace` | Go back |
+| `/` | Filter the current list |
+| `q` | Quit |
+
+**Screens:**
+
+1. **Home** — choose between browsing stored contracts or downloading a new one
+2. **Contracts** — filterable list of all stored ABIs; press `Enter` to explore any contract
+3. **ABI Browse** — split-pane view: element list on the left (color-coded by type), detail panel on the right showing selector, mutability, and parameter types
+4. **Download** — enter a contract address to fetch its ABI from Etherscan on the spot
+
+> **Note:** The Download screen requires `etherscan.api_key` to be set in your config file.
+
 ### Download a contract ABI
 
 ```bash
@@ -66,7 +107,7 @@ ABIs are stored locally under `$HOME/.config/abitool/abis/<chainid>/`. Subsequen
 # Pretty-printed JSON (default)
 abitool abi view 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
 
-# Table with selectors
+# Coloured table with selectors
 abitool abi view -o table 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
 
 # Table with parameter names visible
@@ -78,18 +119,25 @@ abitool abi view -o table -t function 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
 # Available type filters: all, function, event, constructor, fallback, receive
 ```
 
+The table output uses colour to aid readability:
+
+| Column | Colour |
+|---|---|
+| `function` type | Blue |
+| `event` type | Yellow |
+| `error` type | Red |
+| `constructor` type | Green |
+| Selector | Purple |
+| `view` / `pure` mutability | Green |
+| `payable` mutability | Yellow |
+
 ### List all stored contracts
 
 ```bash
 abitool abi list
 ```
 
-Output:
-
-```
-Address                                     Contract Name        ABI
-0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48  FiatTokenProxy       true
-```
+Outputs a coloured table with address, contract name, and ABI presence indicator.
 
 ### Delete a stored contract
 
