@@ -9,7 +9,7 @@ import (
 
 func init() {
 	// Persistent flags shared by all rpc subcommands.
-	rpcCmd.PersistentFlags().IntP("chainid", "c", 1, "Chain ID (e.g., 1 for Ethereum Mainnet)")
+	rpcCmd.PersistentFlags().Int("chainid", 1, "Chain ID (e.g., 1 for Ethereum Mainnet)")
 	rpcCmd.PersistentFlags().StringP("abi-store", "s", "$HOME/.config/abitool/abis/", "Directory where ABI files are stored")
 	rpcCmd.PersistentFlags().String("rpc-url", "", "JSON-RPC endpoint URL (overrides rpc.url in config)")
 

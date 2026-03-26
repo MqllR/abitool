@@ -2,7 +2,6 @@ package contract
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -190,8 +189,8 @@ func (a *ABIManager) ImportABI(ctx context.Context, address, filePath, name stri
 		return fmt.Errorf("failed to read ABI file: %w", err)
 	}
 
-	if !json.Valid(data) {
-		return fmt.Errorf("file does not contain valid JSON: %s", filePath)
+	if _, err := abiparser.ParseABI(string(data)); err != nil {
+		return fmt.Errorf("invalid ABI file %s: %w", filePath, err)
 	}
 
 	if name == "" {

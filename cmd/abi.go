@@ -10,7 +10,7 @@ import (
 func init() {
 	// Parent args applied to all subcommands
 	// Chain ID
-	abiCmd.PersistentFlags().IntP("chainid", "c", 1, "Chain ID (e.g., 1 for Ethereum Mainnet)")
+	abiCmd.PersistentFlags().Int("chainid", 1, "Chain ID (e.g., 1 for Ethereum Mainnet)")
 	// ABI storage
 	abiCmd.PersistentFlags().StringP("abi-store", "s", "$HOME/.config/abitool/abis/", "Directory to store ABI files")
 
