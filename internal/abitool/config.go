@@ -7,6 +7,7 @@ func ConfigInstance() *Config {
 }
 
 type Config struct {
+	ChainID   int             `mapstructure:"chainid"`
 	EtherScan EtherScanConfig `mapstructure:"etherscan"`
 	RPC       RPCConfig       `mapstructure:"rpc"`
 }

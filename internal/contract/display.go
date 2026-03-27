@@ -83,7 +83,7 @@ func Print(abi *abiparser.ABI) (string, error) {
 	return abiPrinter.Print()
 }
 
-func PrintContractList(contracts []*Contract) string {
+func PrintContractList(contracts []*Contract, chainID int) string {
 	headers := []string{"Address", "Contract Name", "ABI"}
 
 	const gap = 2
@@ -116,6 +116,12 @@ func PrintContractList(contracts []*Contract) string {
 	}
 
 	var sb strings.Builder
+
+	// Chain header
+	chainLabel := fmt.Sprintf("Chain: %s (%d)", ChainName(chainID), chainID)
+	sb.WriteString(listSepStyle.Render(chainLabel))
+	sb.WriteByte('\n')
+	sb.WriteByte('\n')
 
 	// Header
 	for i, h := range headers {

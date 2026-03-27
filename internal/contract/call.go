@@ -46,10 +46,6 @@ func NewCallManager(logger *log.Logger) (*CallManager, error) {
 	storePath := viper.GetString("abi-store")
 	chainID := viper.GetInt("chainid")
 
-	if _, ok := SupportedChainIDs[chainID]; !ok {
-		return nil, errors.New("unsupported chain ID")
-	}
-
 	basePath := filepath.Join(storePath, strconv.Itoa(chainID))
 
 	cs, err := contractstore.NewLocal(basePath)

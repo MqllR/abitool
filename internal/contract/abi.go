@@ -44,10 +44,6 @@ func NewABIManager(logger *log.Logger) (*ABIManager, error) {
 	storeCfg := viper.GetString("abi-store")
 	chainIdCfg := viper.GetInt("chainid")
 
-	if _, ok := SupportedChainIDs[chainIdCfg]; !ok {
-		return nil, errors.New("unsupported chain ID")
-	}
-
 	contractStore, err := contract.NewLocal(filepath.Join(storeCfg, strconv.Itoa(chainIdCfg)))
 	if err != nil {
 		return nil, err
@@ -175,7 +171,7 @@ func (a *ABIManager) ListABIs(ctx context.Context, out io.Writer) error {
 		return fmt.Errorf("listing contracts: %w", err)
 	}
 
-	_, _ = fmt.Fprintln(out, PrintContractList(contracts))
+	_, _ = fmt.Fprintln(out, PrintContractList(contracts, viper.GetInt("chainid")))
 
 	return nil
 }

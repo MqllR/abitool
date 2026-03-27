@@ -8,6 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/MqllR/abitool/pkg/chains"
 	"github.com/MqllR/abitool/pkg/abiparser"
 	abistore "github.com/MqllR/abitool/pkg/storage/abi"
 )
@@ -18,6 +19,7 @@ type browseModel struct {
 	address  string
 	name     string
 	basePath string
+	chainID  int
 
 	elements []abiparser.Element
 	filtered []abiparser.Element
@@ -38,7 +40,7 @@ type browseModel struct {
 type abiLoadedMsg struct{ elements []abiparser.Element }
 type abiLoadErrMsg struct{ err error }
 
-func newBrowseModel(address, name, basePath string) browseModel {
+func newBrowseModel(address, name, basePath string, chainID int) browseModel {
 	fi := textinput.New()
 	fi.Placeholder = "filter by name or type..."
 	fi.CharLimit = 64
@@ -46,6 +48,7 @@ func newBrowseModel(address, name, basePath string) browseModel {
 		address:  address,
 		name:     name,
 		basePath: basePath,
+		chainID:  chainID,
 		filter:   fi,
 	}
 }
@@ -246,7 +249,8 @@ func (m browseModel) renderSplit(w, h int) string {
 			m.cursor+1, len(m.filtered)))
 	}
 
-	title := titleStyle.Render("  " + m.name)
+	title := titleStyle.Render("  "+m.name) + "  " +
+		dimStyle.Render(fmt.Sprintf("[%s (%d)]", chains.Name(m.chainID), m.chainID))
 	content := title + "\n" +
 		filterBar + "\n" +
 		sep + "\n" +
@@ -269,7 +273,8 @@ func (m browseModel) renderNarrow(w, h int) string {
 	vr := m.visibleRows()
 
 	var sb strings.Builder
-	sb.WriteString(titleStyle.Render("  "+m.name) + "\n")
+	sb.WriteString(titleStyle.Render("  "+m.name) + "  " +
+		dimStyle.Render(fmt.Sprintf("[%s (%d)]", chains.Name(m.chainID), m.chainID)) + "\n")
 
 	if m.focusing {
 		sb.WriteString("  🔍 " + m.filter.View() + "\n")
