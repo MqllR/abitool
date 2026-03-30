@@ -7,9 +7,11 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/spf13/viper"
 
-	"github.com/MqllR/abitool/pkg/chains"
+	"github.com/MqllR/abitool/internal/abitool"
 	"github.com/MqllR/abitool/pkg/abiparser"
+	"github.com/MqllR/abitool/pkg/chains"
 	abistore "github.com/MqllR/abitool/pkg/storage/abi"
 )
 
@@ -154,6 +156,15 @@ func (m browseModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.offset = m.cursor - vr + 1
 				}
 			}
+		case "enter", "c":
+			if m.loaded && len(m.filtered) > 0 && m.cursor < len(m.filtered) {
+				el := m.filtered[m.cursor]
+				if el.IsFunction() && isReadOnly(el.StateMutability) {
+					rpcURL := resolveRPCURL(m.chainID)
+					next := newCallFormScreen(m.address, el, rpcURL)
+					return m, func() tea.Msg { return pushMsg{next} }
+				}
+			}
 		}
 	}
 	return m, nil
@@ -245,8 +256,15 @@ func (m browseModel) renderSplit(w, h int) string {
 	// Status bar with item counter
 	status := dimStyle.Render("  ↑↓/jk navigate  / filter  esc back  q quit")
 	if len(m.filtered) > 0 {
-		status = dimStyle.Render(fmt.Sprintf("  [%d/%d]  ↑↓/jk navigate  / filter  esc back  q quit",
-			m.cursor+1, len(m.filtered)))
+		hint := "  ↑↓/jk navigate  / filter  esc back  q quit"
+		if m.cursor < len(m.filtered) {
+			el := m.filtered[m.cursor]
+			if el.IsFunction() && isReadOnly(el.StateMutability) {
+				hint = "  ↑↓/jk navigate  enter/c call  / filter  esc back  q quit"
+			}
+		}
+		status = dimStyle.Render(fmt.Sprintf("  [%d/%d]  %s",
+			m.cursor+1, len(m.filtered), strings.TrimPrefix(hint, "  ")))
 	}
 
 	title := titleStyle.Render("  "+m.name) + "  " +
@@ -361,10 +379,6 @@ func (m browseModel) buildDetailLines(el abiparser.Element, colW int) []string {
 	lines = append(lines, detailRow("Selector", selector))
 
 	// State mutability
-	mut := string(el.StateMutability)
-	if mut == "" {
-		mut = "—"
-	}
 	lines = append(lines, detailRow("Mutability", mutabilityStyled(el.StateMutability)))
 
 	lines = append(lines, "")
@@ -449,4 +463,24 @@ func elementBadge(el abiparser.Element) string {
 	default:
 		return badgeFallback.Render("[fb]")
 	}
+}
+
+// isReadOnly reports whether a state mutability is read-only (view or pure).
+func isReadOnly(sm abiparser.StateMutability) bool {
+	return sm == "view" || sm == "pure"
+}
+
+// resolveRPCURL returns the best available RPC URL for the given chain ID.
+// Resolution order: --rpc-url flag → rpc.url config → hardcoded chain default → "".
+func resolveRPCURL(chainID int) string {
+	if url := viper.GetString("rpc-url"); url != "" {
+		return url
+	}
+	if url := abitool.ConfigInstance().RPC.URL; url != "" {
+		return url
+	}
+	if info, ok := chains.Known[chainID]; ok {
+		return info.DefaultRPCURL
+	}
+	return ""
 }

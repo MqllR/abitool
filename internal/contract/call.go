@@ -16,6 +16,7 @@ import (
 	"github.com/MqllR/abitool/internal/ui"
 	"github.com/MqllR/abitool/pkg/abicodec"
 	"github.com/MqllR/abitool/pkg/abiparser"
+	"github.com/MqllR/abitool/pkg/chains"
 	"github.com/MqllR/abitool/pkg/ethclient"
 	abistore "github.com/MqllR/abitool/pkg/storage/abi"
 	contractstore "github.com/MqllR/abitool/pkg/storage/contract"
@@ -32,19 +33,25 @@ type CallManager struct {
 // NewCallManager creates a CallManager. The RPC URL is resolved from (in order of precedence):
 //  1. the --rpc-url flag (bound via viper key "rpc-url")
 //  2. the rpc.url field in the config file
+//  3. the hardcoded public default for the configured chain ID
 func NewCallManager(logger *log.Logger) (*CallManager, error) {
 	cfg := abitool.ConfigInstance()
+	chainID := viper.GetInt("chainid")
 
 	rpcURL := viper.GetString("rpc-url")
 	if rpcURL == "" {
 		rpcURL = cfg.RPC.URL
 	}
 	if rpcURL == "" {
+		if info, ok := chains.Known[chainID]; ok {
+			rpcURL = info.DefaultRPCURL
+		}
+	}
+	if rpcURL == "" {
 		return nil, errors.New("RPC URL is not set: use --rpc-url flag or set rpc.url in config")
 	}
 
 	storePath := viper.GetString("abi-store")
-	chainID := viper.GetInt("chainid")
 
 	basePath := filepath.Join(storePath, strconv.Itoa(chainID))
 
@@ -163,6 +170,39 @@ func (m *CallManager) loadFunctionElement(address, functionName string) (*abipar
 	}
 
 	return nil, fmt.Errorf("function %q not found in ABI for contract %s", functionName, address)
+}
+
+// ExecuteCallDirect executes a read-only eth_call using the provided RPC URL and pre-collected
+// arguments. It does not use viper or RunForm — all inputs are provided by the caller.
+// Returns the decoded output values or an error.
+func ExecuteCallDirect(ctx context.Context, rpcURL, address string, el abiparser.Element, args []string) ([]interface{}, error) {
+	method, err := abicodec.ParseMethod(el)
+	if err != nil {
+		return nil, fmt.Errorf("parsing method: %w", err)
+	}
+
+	calldata, err := abicodec.EncodeInput(method, args)
+	if err != nil {
+		return nil, fmt.Errorf("encoding calldata: %w", err)
+	}
+
+	client, err := ethclient.Dial(ctx, rpcURL)
+	if err != nil {
+		return nil, err
+	}
+	defer client.Close()
+
+	raw, err := client.CallContract(ctx, address, calldata, "latest")
+	if err != nil {
+		return nil, err
+	}
+
+	values, err := abicodec.DecodeOutput(method, raw)
+	if err != nil {
+		return nil, fmt.Errorf("decoding output: %w", err)
+	}
+
+	return values, nil
 }
 
 // writeResult formats and writes the decoded output values to out.
