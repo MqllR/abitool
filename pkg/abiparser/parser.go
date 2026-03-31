@@ -18,6 +18,7 @@ type Element struct {
 	StateMutability StateMutability `json:"stateMutability"`
 	Type            Type            `json:"type"`
 	Name            string          `json:"name"`
+	Anonymous       bool            `json:"anonymous,omitempty"`
 }
 
 type Input struct {
@@ -33,6 +34,7 @@ type Parameter struct {
 	InternalType string      `json:"internalType"`
 	Type         string      `json:"type"`
 	Components   []Parameter `json:"components,omitempty"`
+	Indexed      bool        `json:"indexed,omitempty"`
 }
 
 func ParseABI(abiJSON string) (*ABI, error) {
@@ -60,6 +62,16 @@ func (e *Element) IsFunction() bool {
 	return e.Type == FunctionType
 }
 
+func (e *Element) IsError() bool {
+	return e.Type == ErrorType
+}
+
+// HasSelector reports whether this element type has a 4-byte selector.
+// Both functions and errors use Keccak-256(signature)[0:4].
+func (e *Element) HasSelector() bool {
+	return e.IsFunction() || e.IsError()
+}
+
 // canonicalType returns the canonical ABI type string for a parameter, recursively expanding
 // tuple types into their component form: e.g. "tuple" → "(uint256,address)".
 // Array suffixes on tuples (e.g. "tuple[]", "tuple[3]") are preserved.
@@ -78,10 +90,11 @@ func canonicalType(p Parameter) string {
 	return "(" + strings.Join(parts, ",") + ")" + suffix
 }
 
-// Signature computes the function signature which is defined as "functionName(type1,type2,...)"
+// Signature computes the canonical ABI signature for functions and errors:
+// "name(type1,type2,...)". Used to derive the 4-byte selector.
 func (e *Element) Signature() (string, error) {
-	if !e.IsFunction() {
-		return "", fmt.Errorf("element is not a function")
+	if !e.HasSelector() {
+		return "", fmt.Errorf("element type %q does not have a selector", e.Type)
 	}
 
 	var inputTypes []string
@@ -92,8 +105,8 @@ func (e *Element) Signature() (string, error) {
 	return e.Name + "(" + strings.Join(inputTypes, ",") + ")", nil
 }
 
-// Selector computes the function selector which is the first 4 bytes of the Keccak-256 hash of the function signature.
-// The function signature is defined as "functionName(type1,type2,...)"
+// Selector computes the 4-byte selector: Keccak-256(signature)[0:4].
+// Applies to functions and errors.
 func (e *Element) Selector() (string, error) {
 	sign, err := e.Signature()
 	if err != nil {

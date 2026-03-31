@@ -359,19 +359,22 @@ func (m browseModel) buildListLines(colW, maxRows int) []string {
 func (m browseModel) buildDetailLines(el abiparser.Element, colW int) []string {
 	var lines []string
 
-	// Header: type  name
+	// Header: type  name  [anon]
 	typePart := lipgloss.NewStyle().Foreground(colorDim).Bold(true).Render(string(el.Type))
 	namePart := lipgloss.NewStyle().Foreground(colorWhite).Bold(true).Render(el.Name)
+	header := " " + typePart
 	if el.Name != "" {
-		lines = append(lines, " "+typePart+"  "+namePart)
-	} else {
-		lines = append(lines, " "+typePart)
+		header += "  " + namePart
 	}
+	if el.Anonymous {
+		header += "  " + dimStyle.Render("[anon]")
+	}
+	lines = append(lines, header)
 	lines = append(lines, dimStyle.Render(" "+strings.Repeat("─", colW-2)))
 
-	// Selector
+	// Selector (functions and errors)
 	selector := dimStyle.Render("N/A")
-	if el.IsFunction() {
+	if el.HasSelector() {
 		if sel, err := el.Selector(); err == nil {
 			selector = lipgloss.NewStyle().Foreground(colorBlue).Render(sel)
 		}
@@ -441,6 +444,10 @@ func formatParam(p abiparser.Parameter, isOutput bool, _ int) string {
 	nameS := lipgloss.NewStyle().Foreground(colorWhite).Render(name)
 
 	line := "  " + nameS + "  " + typeS
+
+	if p.Indexed {
+		line += dimStyle.Render("  [idx]")
+	}
 
 	if p.InternalType != "" && p.InternalType != p.Type {
 		line += dimStyle.Render("  // "+p.InternalType)
