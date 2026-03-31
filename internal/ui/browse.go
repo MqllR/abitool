@@ -372,14 +372,23 @@ func (m browseModel) buildDetailLines(el abiparser.Element, colW int) []string {
 	lines = append(lines, header)
 	lines = append(lines, dimStyle.Render(" "+strings.Repeat("─", colW-2)))
 
-	// Selector (functions and errors)
-	selector := dimStyle.Render("N/A")
-	if el.HasSelector() {
+	// Selector (functions and errors) / Topic hash (events)
+	switch {
+	case el.HasSelector():
+		selector := dimStyle.Render("N/A")
 		if sel, err := el.Selector(); err == nil {
 			selector = lipgloss.NewStyle().Foreground(colorBlue).Render(sel)
 		}
+		lines = append(lines, detailRow("Selector", selector))
+	case el.HasTopicHash():
+		topic := dimStyle.Render("N/A")
+		if th, err := el.TopicHash(); err == nil {
+			topic = lipgloss.NewStyle().Foreground(colorBlue).Render(th)
+		}
+		lines = append(lines, detailRow("Topic[0]", topic))
+	default:
+		lines = append(lines, detailRow("Selector", dimStyle.Render("N/A")))
 	}
-	lines = append(lines, detailRow("Selector", selector))
 
 	// State mutability
 	lines = append(lines, detailRow("Mutability", mutabilityStyled(el.StateMutability)))

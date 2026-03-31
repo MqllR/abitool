@@ -85,7 +85,7 @@ func (p *TablePrinter) Print() (string, error) {
 
 	var b bytes.Buffer
 
-	headers := []string{"Type", "Name", "Inputs", "Selector", "StateMutability"}
+	headers := []string{"Type", "Name", "Inputs", "Selector/Topic", "StateMutability"}
 	colWidths := []int{len(headers[0]), len(headers[1]), len(headers[2]), len(headers[3]), len(headers[4])}
 
 	// Collect raw (unstyled) rows to measure column widths.
@@ -98,15 +98,31 @@ func (p *TablePrinter) Print() (string, error) {
 	}
 	var raws []rawRow
 	for element := range p.a.All() {
-		selector, err := element.Selector()
-		if err != nil {
-			selector = "N/A"
+		var id string
+		switch {
+		case element.HasSelector():
+			sel, err := element.Selector()
+			if err != nil {
+				id = "N/A"
+			} else {
+				id = sel
+			}
+		case element.HasTopicHash():
+			th, err := element.TopicHash()
+			if err != nil {
+				id = "N/A"
+			} else {
+				// Truncate to 0x + 8 chars + … for table readability (full hash in detail view).
+				id = th[:10] + "…"
+			}
+		default:
+			id = "N/A"
 		}
 		r := rawRow{
 			typ:      string(element.Type),
 			name:     element.Name,
 			inputs:   p.formatInputTypes(element.Inputs),
-			selector: selector,
+			selector: id,
 			mut:      string(element.StateMutability),
 		}
 		cells := []string{r.typ, r.name, r.inputs, r.selector, r.mut}

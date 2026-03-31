@@ -66,10 +66,21 @@ func (e *Element) IsError() bool {
 	return e.Type == ErrorType
 }
 
+func (e *Element) IsEvent() bool {
+	return e.Type == EventType
+}
+
 // HasSelector reports whether this element type has a 4-byte selector.
 // Both functions and errors use Keccak-256(signature)[0:4].
 func (e *Element) HasSelector() bool {
 	return e.IsFunction() || e.IsError()
+}
+
+// HasTopicHash reports whether this element has an event topic hash (topic[0]).
+// Non-anonymous events use the full Keccak-256(signature) as topic[0].
+// Anonymous events do not emit a topic[0].
+func (e *Element) HasTopicHash() bool {
+	return e.IsEvent() && !e.Anonymous
 }
 
 // canonicalType returns the canonical ABI type string for a parameter, recursively expanding
@@ -90,11 +101,11 @@ func canonicalType(p Parameter) string {
 	return "(" + strings.Join(parts, ",") + ")" + suffix
 }
 
-// Signature computes the canonical ABI signature for functions and errors:
-// "name(type1,type2,...)". Used to derive the 4-byte selector.
+// Signature computes the canonical ABI signature for functions, errors and events:
+// "name(type1,type2,...)". Used to derive the 4-byte selector or the 32-byte topic hash.
 func (e *Element) Signature() (string, error) {
-	if !e.HasSelector() {
-		return "", fmt.Errorf("element type %q does not have a selector", e.Type)
+	if !e.HasSelector() && !e.HasTopicHash() {
+		return "", fmt.Errorf("element type %q does not have a selector or topic hash", e.Type)
 	}
 
 	var inputTypes []string
@@ -120,4 +131,29 @@ func (e *Element) Selector() (string, error) {
 	}
 
 	return "0x" + hex.EncodeToString(hash.Sum(nil)[:4]), nil
+}
+
+// TopicHash computes the full 32-byte event topic hash: Keccak-256(signature).
+// This is the value used as topic[0] in eth_getLogs filters.
+// Applies to non-anonymous events only.
+func (e *Element) TopicHash() (string, error) {
+	if !e.HasTopicHash() {
+		if e.IsEvent() {
+			return "", fmt.Errorf("anonymous events do not have a topic[0] hash")
+		}
+		return "", fmt.Errorf("element type %q does not have a topic hash", e.Type)
+	}
+
+	sign, err := e.Signature()
+	if err != nil {
+		return "", err
+	}
+
+	hash := crypto.NewLegacyKeccak256()
+	_, err = hash.Write([]byte(sign))
+	if err != nil {
+		return "", err
+	}
+
+	return "0x" + hex.EncodeToString(hash.Sum(nil)), nil
 }
