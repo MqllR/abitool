@@ -38,18 +38,39 @@ func NewPrettyPrinter(abi *ABI) *PrettyPrinter {
 	return &PrettyPrinter{a: abi}
 }
 
-func (p *PrettyPrinter) Print() (string, error) {
-	var buf bytes.Buffer
+// enrichedElement wraps an Element for JSON output, adding computed fields
+// (selector for functions/errors, topicHash for non-anonymous events).
+type enrichedElement struct {
+	Element
+	Selector  *string `json:"selector,omitempty"`
+	TopicHash *string `json:"topicHash,omitempty"`
+}
 
-	b, err := json.Marshal(p.a)
+func (p *PrettyPrinter) Print() (string, error) {
+	enriched := make([]enrichedElement, 0, len(*p.a))
+	for el := range p.a.All() {
+		e := enrichedElement{Element: el}
+		switch {
+		case el.HasSelector():
+			if sel, err := el.Selector(); err == nil {
+				e.Selector = &sel
+			}
+		case el.HasTopicHash():
+			if th, err := el.TopicHash(); err == nil {
+				e.TopicHash = &th
+			}
+		}
+		enriched = append(enriched, e)
+	}
+
+	var buf bytes.Buffer
+	b, err := json.Marshal(enriched)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal ABI: %w", err)
 	}
-
-	if err := json.Indent(&buf, []byte(b), "", "  "); err != nil {
+	if err := json.Indent(&buf, b, "", "  "); err != nil {
 		return "", err
 	}
-
 	return buf.String(), nil
 }
 
@@ -112,8 +133,7 @@ func (p *TablePrinter) Print() (string, error) {
 			if err != nil {
 				id = "N/A"
 			} else {
-				// Truncate to 0x + 8 chars + … for table readability (full hash in detail view).
-				id = th[:10] + "…"
+				id = th
 			}
 		default:
 			id = "N/A"
