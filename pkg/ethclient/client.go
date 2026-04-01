@@ -1,3 +1,6 @@
+// Copyright 2025 MqllR. All rights reserved.
+// SPDX-License-Identifier: MIT
+
 // Package ethclient provides a minimal JSON-RPC client for Ethereum node interactions.
 // It uses the go-ethereum RPC transport (github.com/ethereum/go-ethereum/rpc).
 // go-ethereum is Copyright 2014 The go-ethereum Authors, licensed under LGPL-3.0.

@@ -1,3 +1,6 @@
+// Copyright 2025 MqllR. All rights reserved.
+// SPDX-License-Identifier: MIT
+
 package contract
 
 import "github.com/MqllR/abitool/pkg/chains"

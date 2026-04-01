@@ -1,3 +1,6 @@
+// Copyright 2025 MqllR. All rights reserved.
+// SPDX-License-Identifier: MIT
+
 // Package chains provides display metadata for well-known EVM chains.
 package chains
 

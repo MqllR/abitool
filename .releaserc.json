@@ -1,0 +1,22 @@
+{
+  "branches": ["main"],
+  "plugins": [
+    "@semantic-release/commit-analyzer",
+    "@semantic-release/release-notes-generator",
+    ["@semantic-release/changelog", {
+      "changelogFile": "CHANGELOG.md"
+    }],
+    ["@semantic-release/github", {
+      "assets": [
+        {"path": "dist/abitool_linux_amd64.tar.gz", "label": "Linux AMD64"},
+        {"path": "dist/abitool_linux_arm64.tar.gz", "label": "Linux ARM64"},
+        {"path": "dist/abitool_darwin_amd64.tar.gz", "label": "macOS AMD64"},
+        {"path": "dist/abitool_darwin_arm64.tar.gz", "label": "macOS ARM64 (Apple Silicon)"}
+      ]
+    }],
+    ["@semantic-release/git", {
+      "assets": ["CHANGELOG.md"],
+      "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+    }]
+  ]
+}

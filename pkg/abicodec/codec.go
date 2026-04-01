@@ -1,3 +1,6 @@
+// Copyright 2025 MqllR. All rights reserved.
+// SPDX-License-Identifier: MIT
+
 // Package abicodec bridges abitool's ABI parser types with the go-ethereum ABI
 // codec (github.com/ethereum/go-ethereum/accounts/abi) to encode function call
 // inputs and decode return values.
@@ -185,37 +188,73 @@ func hexDecode(s string) ([]byte, error) {
 }
 
 // toFixedBytes converts a byte slice into the concrete [N]byte array type that
-// go-ethereum expects.
+// go-ethereum expects. Supports all valid Solidity fixed-byte sizes (1–32).
 func toFixedBytes(b []byte, size int) (interface{}, error) {
 	switch size {
 	case 1:
-		var a [1]byte
-		copy(a[:], b)
-		return a, nil
+		var a [1]byte; copy(a[:], b); return a, nil
 	case 2:
-		var a [2]byte
-		copy(a[:], b)
-		return a, nil
+		var a [2]byte; copy(a[:], b); return a, nil
+	case 3:
+		var a [3]byte; copy(a[:], b); return a, nil
 	case 4:
-		var a [4]byte
-		copy(a[:], b)
-		return a, nil
+		var a [4]byte; copy(a[:], b); return a, nil
+	case 5:
+		var a [5]byte; copy(a[:], b); return a, nil
+	case 6:
+		var a [6]byte; copy(a[:], b); return a, nil
+	case 7:
+		var a [7]byte; copy(a[:], b); return a, nil
 	case 8:
-		var a [8]byte
-		copy(a[:], b)
-		return a, nil
+		var a [8]byte; copy(a[:], b); return a, nil
+	case 9:
+		var a [9]byte; copy(a[:], b); return a, nil
+	case 10:
+		var a [10]byte; copy(a[:], b); return a, nil
+	case 11:
+		var a [11]byte; copy(a[:], b); return a, nil
+	case 12:
+		var a [12]byte; copy(a[:], b); return a, nil
+	case 13:
+		var a [13]byte; copy(a[:], b); return a, nil
+	case 14:
+		var a [14]byte; copy(a[:], b); return a, nil
+	case 15:
+		var a [15]byte; copy(a[:], b); return a, nil
 	case 16:
-		var a [16]byte
-		copy(a[:], b)
-		return a, nil
+		var a [16]byte; copy(a[:], b); return a, nil
+	case 17:
+		var a [17]byte; copy(a[:], b); return a, nil
+	case 18:
+		var a [18]byte; copy(a[:], b); return a, nil
+	case 19:
+		var a [19]byte; copy(a[:], b); return a, nil
 	case 20:
-		var a [20]byte
-		copy(a[:], b)
-		return a, nil
+		var a [20]byte; copy(a[:], b); return a, nil
+	case 21:
+		var a [21]byte; copy(a[:], b); return a, nil
+	case 22:
+		var a [22]byte; copy(a[:], b); return a, nil
+	case 23:
+		var a [23]byte; copy(a[:], b); return a, nil
+	case 24:
+		var a [24]byte; copy(a[:], b); return a, nil
+	case 25:
+		var a [25]byte; copy(a[:], b); return a, nil
+	case 26:
+		var a [26]byte; copy(a[:], b); return a, nil
+	case 27:
+		var a [27]byte; copy(a[:], b); return a, nil
+	case 28:
+		var a [28]byte; copy(a[:], b); return a, nil
+	case 29:
+		var a [29]byte; copy(a[:], b); return a, nil
+	case 30:
+		var a [30]byte; copy(a[:], b); return a, nil
+	case 31:
+		var a [31]byte; copy(a[:], b); return a, nil
 	case 32:
-		var a [32]byte
-		copy(a[:], b)
-		return a, nil
+		var a [32]byte; copy(a[:], b); return a, nil
 	default:
 		return nil, fmt.Errorf("unsupported fixed byte size %d", size)
 	}

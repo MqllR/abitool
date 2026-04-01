@@ -1,3 +1,6 @@
+// Copyright 2025 MqllR. All rights reserved.
+// SPDX-License-Identifier: MIT
+
 package etherscan
 
 import (
@@ -6,9 +9,10 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"time"
 )
 
-const etherscanBaseURL = "https://api.etherscan.io/v2/api"
+var etherscanBaseURL = "https://api.etherscan.io/v2/api"
 
 type ChainID string
 
@@ -35,7 +39,7 @@ func NewClient(apiKey string, chainID ChainID) *Client {
 	return &Client{
 		chainID:    chainID,
 		apiKey:     apiKey,
-		httpClient: &http.Client{},
+		httpClient: &http.Client{Timeout: 30 * time.Second},
 	}
 }
 

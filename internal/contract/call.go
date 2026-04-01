@@ -1,3 +1,6 @@
+// Copyright 2025 MqllR. All rights reserved.
+// SPDX-License-Identifier: MIT
+
 package contract
 
 import (
@@ -170,39 +173,6 @@ func (m *CallManager) loadFunctionElement(address, functionName string) (*abipar
 	}
 
 	return nil, fmt.Errorf("function %q not found in ABI for contract %s", functionName, address)
-}
-
-// ExecuteCallDirect executes a read-only eth_call using the provided RPC URL and pre-collected
-// arguments. It does not use viper or RunForm — all inputs are provided by the caller.
-// Returns the decoded output values or an error.
-func ExecuteCallDirect(ctx context.Context, rpcURL, address string, el abiparser.Element, args []string) ([]interface{}, error) {
-	method, err := abicodec.ParseMethod(el)
-	if err != nil {
-		return nil, fmt.Errorf("parsing method: %w", err)
-	}
-
-	calldata, err := abicodec.EncodeInput(method, args)
-	if err != nil {
-		return nil, fmt.Errorf("encoding calldata: %w", err)
-	}
-
-	client, err := ethclient.Dial(ctx, rpcURL)
-	if err != nil {
-		return nil, err
-	}
-	defer client.Close()
-
-	raw, err := client.CallContract(ctx, address, calldata, "latest")
-	if err != nil {
-		return nil, err
-	}
-
-	values, err := abicodec.DecodeOutput(method, raw)
-	if err != nil {
-		return nil, fmt.Errorf("decoding output: %w", err)
-	}
-
-	return values, nil
 }
 
 // writeResult formats and writes the decoded output values to out.

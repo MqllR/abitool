@@ -12,6 +12,8 @@ import (
 )
 
 func init() {
+	rootCmd.Version = Version
+
 	rootCmd.PersistentFlags().StringP("config", "c", "$HOME/.config/abitool/config.yaml", "Path to configuration file")
 
 	if err := viper.BindPFlag("config", rootCmd.PersistentFlags().Lookup("config")); err != nil {
@@ -21,6 +23,9 @@ func init() {
 	rootCmd.AddCommand(abiCmd)
 	rootCmd.AddCommand(rpcCmd)
 }
+
+// Version is set at build time via -ldflags.
+var Version = "dev"
 
 var rootCmd = &cobra.Command{
 	Use:   "abitool",

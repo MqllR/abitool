@@ -1,3 +1,6 @@
+// Copyright 2025 MqllR. All rights reserved.
+// SPDX-License-Identifier: MIT
+
 // Package abiparser provides types and utilities for parsing and inspecting
 // Ethereum contract ABIs, following the ABI JSON specification:
 // https://docs.soliditylang.org/en/latest/abi-spec.html#json

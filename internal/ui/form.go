@@ -1,3 +1,6 @@
+// Copyright 2025 MqllR. All rights reserved.
+// SPDX-License-Identifier: MIT
+
 // Package ui provides terminal UI components built with bubbletea.
 package ui
 
