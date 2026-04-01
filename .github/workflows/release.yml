@@ -7,6 +7,8 @@ on:
 
 permissions:
   contents: write
+  issues: write
+  pull-requests: write
 
 jobs:
   release:
@@ -28,15 +30,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      - name: Semantic Release
+      - name: Semantic Release (dry run)
         id: semantic
         uses: cycjimmy/semantic-release-action@v4
         with:
-          semantic_version: 24
-          branches: '["main"]'
           extra_plugins: |
-            @semantic-release/changelog
-            @semantic-release/git
+            @semantic-release/changelog@6.0.2
+            @semantic-release/git@10.0.1
+          dry_run: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -53,19 +54,12 @@ jobs:
           GOOS=darwin GOARCH=amd64 go build -ldflags="${LDFLAGS}" -o dist/abitool_darwin_amd64 .
           GOOS=darwin GOARCH=arm64 go build -ldflags="${LDFLAGS}" -o dist/abitool_darwin_arm64 .
 
-          tar -czf dist/abitool_linux_amd64.tar.gz  -C dist abitool_linux_amd64
-          tar -czf dist/abitool_linux_arm64.tar.gz  -C dist abitool_linux_arm64
-          tar -czf dist/abitool_darwin_amd64.tar.gz -C dist abitool_darwin_amd64
-          tar -czf dist/abitool_darwin_arm64.tar.gz -C dist abitool_darwin_arm64
-
-      - name: Upload release assets
+      - name: Semantic Release
         if: steps.semantic.outputs.new_release_published == 'true'
+        uses: cycjimmy/semantic-release-action@v4
+        with:
+          extra_plugins: |
+            @semantic-release/changelog@6.0.2
+            @semantic-release/git@10.0.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: v${{ steps.semantic.outputs.new_release_version }}
-        run: |
-          gh release upload "${TAG}" \
-            dist/abitool_linux_amd64.tar.gz \
-            dist/abitool_linux_arm64.tar.gz \
-            dist/abitool_darwin_amd64.tar.gz \
-            dist/abitool_darwin_arm64.tar.gz
