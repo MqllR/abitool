@@ -141,7 +141,7 @@ func (m *CallManager) CallContract(ctx context.Context, address, functionName st
 		return fmt.Errorf("decoding output: %w", err)
 	}
 
-	return writeResult(out, values, opts.OutputJSON)
+	return writeResult(out, element.Outputs, values, opts.OutputJSON)
 }
 
 // loadFunctionElement reads the stored ABI and returns the Element matching functionName.
@@ -176,7 +176,9 @@ func (m *CallManager) loadFunctionElement(address, functionName string) (*abipar
 }
 
 // writeResult formats and writes the decoded output values to out.
-func writeResult(out io.Writer, values []interface{}, asJSON bool) error {
+// If outputs metadata is provided and a parameter has a name, it is used as
+// the label; otherwise the positional index is shown.
+func writeResult(out io.Writer, outputs []abiparser.Output, values []interface{}, asJSON bool) error {
 	if len(values) == 0 {
 		_, err := fmt.Fprintln(out, "(no return value)")
 		return err
@@ -192,7 +194,11 @@ func writeResult(out io.Writer, values []interface{}, asJSON bool) error {
 	}
 
 	for i, v := range values {
-		_, err := fmt.Fprintf(out, "[%d] %v\n", i, v)
+		label := fmt.Sprintf("[%d]", i)
+		if i < len(outputs) && outputs[i].Name != "" {
+			label = outputs[i].Name
+		}
+		_, err := fmt.Fprintf(out, "%s: %v\n", label, v)
 		if err != nil {
 			return err
 		}

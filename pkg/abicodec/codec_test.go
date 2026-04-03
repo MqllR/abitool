@@ -298,7 +298,7 @@ func TestConvertArg_Bytes(t *testing.T) {
 	}
 }
 
-func TestConvertArg_UnsupportedType(t *testing.T) {
+func TestConvertArg_SliceType(t *testing.T) {
 	el := abiparser.Element{
 		Type: abiparser.FunctionType,
 		Name: "setArr",
@@ -312,9 +312,68 @@ func TestConvertArg_UnsupportedType(t *testing.T) {
 		t.Fatalf("ParseMethod: %v", err)
 	}
 
+	// Valid JSON array of uint256 values.
 	_, err = EncodeInput(method, []string{"[1,2,3]"})
+	if err != nil {
+		t.Errorf("EncodeInput with uint256[] [1,2,3]: unexpected error: %v", err)
+	}
+
+	// Empty array is valid.
+	_, err = EncodeInput(method, []string{"[]"})
+	if err != nil {
+		t.Errorf("EncodeInput with uint256[] []: unexpected error: %v", err)
+	}
+
+	// Invalid JSON should error.
+	_, err = EncodeInput(method, []string{"not-json"})
 	if err == nil {
-		t.Error("EncodeInput with unsupported array type: expected error, got nil")
+		t.Error("EncodeInput with malformed JSON: expected error, got nil")
+	}
+}
+
+func TestConvertArg_AddressSlice(t *testing.T) {
+	el := abiparser.Element{
+		Type: abiparser.FunctionType,
+		Name: "setAddrs",
+		Inputs: []abiparser.Input{
+			{Parameter: abiparser.Parameter{Name: "addrs", Type: "address[]"}},
+		},
+		StateMutability: abiparser.NonpayableStateMutability,
+	}
+	method, err := ParseMethod(el)
+	if err != nil {
+		t.Fatalf("ParseMethod: %v", err)
+	}
+
+	_, err = EncodeInput(method, []string{`["0x742d35Cc6634C0532925a3b844Bc454e4438f44e","0xdAC17F958D2ee523a2206206994597C13D831ec7"]`})
+	if err != nil {
+		t.Errorf("EncodeInput with address[]: unexpected error: %v", err)
+	}
+}
+
+func TestConvertArg_FixedArray(t *testing.T) {
+	el := abiparser.Element{
+		Type: abiparser.FunctionType,
+		Name: "setFixed",
+		Inputs: []abiparser.Input{
+			{Parameter: abiparser.Parameter{Name: "arr", Type: "uint256[3]"}},
+		},
+		StateMutability: abiparser.NonpayableStateMutability,
+	}
+	method, err := ParseMethod(el)
+	if err != nil {
+		t.Fatalf("ParseMethod: %v", err)
+	}
+
+	_, err = EncodeInput(method, []string{"[10,20,30]"})
+	if err != nil {
+		t.Errorf("EncodeInput with uint256[3]: unexpected error: %v", err)
+	}
+
+	// Wrong element count should error.
+	_, err = EncodeInput(method, []string{"[10,20]"})
+	if err == nil {
+		t.Error("EncodeInput with wrong fixed array size: expected error, got nil")
 	}
 }
 

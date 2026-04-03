@@ -132,9 +132,13 @@ func (m callResultScreen) View() string {
 		sb.WriteString(dimStyle.Render("  (no return value)") + "\n")
 	default:
 		for i, v := range m.values {
-			label := dimStyle.Render(fmt.Sprintf("  [%d]  ", i))
-			value := lipgloss.NewStyle().Foreground(colorGreen).Render(fmt.Sprintf("%v", v))
-			sb.WriteString(label + value + "\n")
+			label := fmt.Sprintf("[%d]", i)
+			if i < len(m.element.Outputs) && m.element.Outputs[i].Name != "" {
+				label = m.element.Outputs[i].Name
+			}
+			styledLabel := dimStyle.Render("  " + label + "  ")
+			styledValue := lipgloss.NewStyle().Foreground(colorGreen).Render(fmt.Sprintf("%v", v))
+			sb.WriteString(styledLabel + styledValue + "\n")
 		}
 	}
 

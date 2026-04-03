@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"reflect"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -85,7 +86,8 @@ func DecodeOutput(method abi.Method, data []byte) ([]interface{}, error) {
 }
 
 // convertArg converts a string CLI argument to the appropriate Go type for the
-// given ABI type. Supports the most common EVM types.
+// given ABI type. Supports all common EVM types including arrays, fixed-size
+// arrays, and tuples. Arrays and tuples expect a JSON array as input.
 func convertArg(abiType abi.Type, value string) (interface{}, error) {
 	switch abiType.T {
 	case abi.AddressTy:
@@ -131,8 +133,158 @@ func convertArg(abiType abi.Type, value string) (interface{}, error) {
 		}
 		return toFixedBytes(b, abiType.Size)
 
+	case abi.SliceTy:
+		var rawElems []json.RawMessage
+		if err := json.Unmarshal([]byte(value), &rawElems); err != nil {
+			return nil, fmt.Errorf("type %s expects a JSON array, e.g. [v1,v2]: %w", abiType, err)
+		}
+		elemGoType, err := goTypeForABI(*abiType.Elem)
+		if err != nil {
+			return nil, fmt.Errorf("resolving element type: %w", err)
+		}
+		slice := reflect.MakeSlice(reflect.SliceOf(elemGoType), len(rawElems), len(rawElems))
+		for i, raw := range rawElems {
+			s, err := jsonToString(raw)
+			if err != nil {
+				return nil, fmt.Errorf("element [%d]: invalid JSON: %w", i, err)
+			}
+			v, err := convertArg(*abiType.Elem, s)
+			if err != nil {
+				return nil, fmt.Errorf("element [%d]: %w", i, err)
+			}
+			slice.Index(i).Set(reflect.ValueOf(v))
+		}
+		return slice.Interface(), nil
+
+	case abi.ArrayTy:
+		var rawElems []json.RawMessage
+		if err := json.Unmarshal([]byte(value), &rawElems); err != nil {
+			return nil, fmt.Errorf("type %s expects a JSON array, e.g. [v1,v2]: %w", abiType, err)
+		}
+		if len(rawElems) != abiType.Size {
+			return nil, fmt.Errorf("type %s: expected %d element(s), got %d", abiType, abiType.Size, len(rawElems))
+		}
+		elemGoType, err := goTypeForABI(*abiType.Elem)
+		if err != nil {
+			return nil, fmt.Errorf("resolving element type: %w", err)
+		}
+		arr := reflect.New(reflect.ArrayOf(abiType.Size, elemGoType)).Elem()
+		for i, raw := range rawElems {
+			s, err := jsonToString(raw)
+			if err != nil {
+				return nil, fmt.Errorf("element [%d]: invalid JSON: %w", i, err)
+			}
+			v, err := convertArg(*abiType.Elem, s)
+			if err != nil {
+				return nil, fmt.Errorf("element [%d]: %w", i, err)
+			}
+			arr.Index(i).Set(reflect.ValueOf(v))
+		}
+		return arr.Interface(), nil
+
+	case abi.TupleTy:
+		var rawFields []json.RawMessage
+		if err := json.Unmarshal([]byte(value), &rawFields); err != nil {
+			return nil, fmt.Errorf("type %s expects a JSON array of positional fields, e.g. [v1,v2]: %w", abiType, err)
+		}
+		if len(rawFields) != len(abiType.TupleElems) {
+			return nil, fmt.Errorf("tuple %s: expected %d field(s), got %d", abiType, len(abiType.TupleElems), len(rawFields))
+		}
+		tuple := reflect.New(abiType.TupleType).Elem()
+		for i, raw := range rawFields {
+			s, err := jsonToString(raw)
+			if err != nil {
+				return nil, fmt.Errorf("tuple field %d: invalid JSON: %w", i, err)
+			}
+			v, err := convertArg(*abiType.TupleElems[i], s)
+			if err != nil {
+				name := ""
+				if i < len(abiType.TupleRawNames) {
+					name = abiType.TupleRawNames[i]
+				}
+				return nil, fmt.Errorf("tuple field %d (%s): %w", i, name, err)
+			}
+			tuple.Field(i).Set(reflect.ValueOf(v))
+		}
+		return tuple.Interface(), nil
+
 	default:
-		return nil, fmt.Errorf("unsupported ABI type %q (complex types require --interactive mode)", abiType.String())
+		return nil, fmt.Errorf("unsupported ABI type %q", abiType.String())
+	}
+}
+
+// jsonToString extracts a Go string from a json.RawMessage. JSON strings are
+// unquoted; numbers, booleans, arrays, and objects are returned as-is so they
+// can be passed recursively to convertArg.
+func jsonToString(raw json.RawMessage) (string, error) {
+	trimmed := strings.TrimSpace(string(raw))
+	if len(trimmed) > 0 && trimmed[0] == '"' {
+		var s string
+		if err := json.Unmarshal(raw, &s); err != nil {
+			return "", err
+		}
+		return s, nil
+	}
+	return trimmed, nil
+}
+
+// goTypeForABI returns the reflect.Type that go-ethereum's ABI codec expects
+// for the given ABI type. Used to build properly typed slices and arrays via
+// reflection when encoding complex arguments.
+func goTypeForABI(t abi.Type) (reflect.Type, error) {
+	switch t.T {
+	case abi.AddressTy:
+		return reflect.TypeOf(common.Address{}), nil
+	case abi.BoolTy:
+		return reflect.TypeOf(false), nil
+	case abi.UintTy:
+		switch t.Size {
+		case 8:
+			return reflect.TypeOf(uint8(0)), nil
+		case 16:
+			return reflect.TypeOf(uint16(0)), nil
+		case 32:
+			return reflect.TypeOf(uint32(0)), nil
+		case 64:
+			return reflect.TypeOf(uint64(0)), nil
+		default:
+			return reflect.TypeOf(new(big.Int)), nil
+		}
+	case abi.IntTy:
+		switch t.Size {
+		case 8:
+			return reflect.TypeOf(int8(0)), nil
+		case 16:
+			return reflect.TypeOf(int16(0)), nil
+		case 32:
+			return reflect.TypeOf(int32(0)), nil
+		case 64:
+			return reflect.TypeOf(int64(0)), nil
+		default:
+			return reflect.TypeOf(new(big.Int)), nil
+		}
+	case abi.StringTy:
+		return reflect.TypeOf(""), nil
+	case abi.BytesTy:
+		return reflect.TypeOf([]byte{}), nil
+	case abi.FixedBytesTy:
+		return reflect.ArrayOf(t.Size, reflect.TypeOf(byte(0))), nil
+	case abi.SliceTy:
+		elemType, err := goTypeForABI(*t.Elem)
+		if err != nil {
+			return nil, err
+		}
+		return reflect.SliceOf(elemType), nil
+	case abi.ArrayTy:
+		elemType, err := goTypeForABI(*t.Elem)
+		if err != nil {
+			return nil, err
+		}
+		return reflect.ArrayOf(t.Size, elemType), nil
+	case abi.TupleTy:
+		return t.TupleType, nil
+	default:
+		return nil, fmt.Errorf("unsupported ABI type %q", t.String())
 	}
 }
 
