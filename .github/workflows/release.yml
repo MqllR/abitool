@@ -47,12 +47,12 @@ jobs:
           VERSION: v${{ steps.semantic.outputs.new_release_version }}
         run: |
           mkdir -p dist
-          LDFLAGS="-s -w -X github.com/MqllR/abitool/cmd.Version=${VERSION}"
+          LDFLAGS="-s -w -X main.Version=${VERSION}"
 
-          GOOS=linux  GOARCH=amd64 go build -ldflags="${LDFLAGS}" -o dist/abitool_linux_amd64  .
-          GOOS=linux  GOARCH=arm64 go build -ldflags="${LDFLAGS}" -o dist/abitool_linux_arm64  .
-          GOOS=darwin GOARCH=amd64 go build -ldflags="${LDFLAGS}" -o dist/abitool_darwin_amd64 .
-          GOOS=darwin GOARCH=arm64 go build -ldflags="${LDFLAGS}" -o dist/abitool_darwin_arm64 .
+          GOOS=linux  GOARCH=amd64 go build -ldflags="${LDFLAGS}" -o dist/abitool_linux_amd64  ./cmd/
+          GOOS=linux  GOARCH=arm64 go build -ldflags="${LDFLAGS}" -o dist/abitool_linux_arm64  ./cmd/
+          GOOS=darwin GOARCH=amd64 go build -ldflags="${LDFLAGS}" -o dist/abitool_darwin_amd64 ./cmd/
+          GOOS=darwin GOARCH=arm64 go build -ldflags="${LDFLAGS}" -o dist/abitool_darwin_arm64 ./cmd/
 
       - name: Semantic Release
         if: steps.semantic.outputs.new_release_published == 'true'

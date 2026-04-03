@@ -1,5 +1,7 @@
-BINARY := abitool
-GO     := go
+BINARY  := abitool
+GO      := go
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+LDFLAGS := -s -w -X main.Version=$(VERSION)
 
 .DEFAULT_GOAL := help
 
@@ -10,7 +12,7 @@ help: ## List available tasks
 		| awk 'BEGIN {FS = ":.*##"}; {printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
 
 build: ## Build the binary
-	$(GO) build -o $(BINARY) .
+	$(GO) build -ldflags="$(LDFLAGS)" -o ./bin/$(BINARY) ./cmd/
 
 test: ## Run tests
 	$(GO) test ./...

@@ -22,13 +22,14 @@ This file gives AI assistants the context needed to work effectively in this rep
 
 ```
 cmd/                   Cobra command definitions (entry points only — no business logic)
+  main.go              Program entry point — calls Execute()
   abi.go               Parent "abi" command; registers persistent flags (chainid, abi-store)
   abi/
     download.go        abitool abi download <address>
     view.go            abitool abi view <address>
     list.go            abitool abi list
     delete.go          abitool abi delete <address>
-  root.go              Root command; loads config + launches TUI when called with no subcommand
+  root.go              Root command; Version var (injected at build time); loads config + launches TUI when called with no subcommand
 
 internal/
   abitool/
@@ -272,7 +273,7 @@ The `TablePrinter` in `pkg/abiparser/print.go` also uses Lip Gloss for the stati
 ## Running / building
 
 ```bash
-go build -o abitool .
+go build -o abitool ./cmd/
 go test ./...
 ```
 
@@ -281,4 +282,12 @@ Before submitting changes, run the pre-checks:
 ```bash
 make lint   # requires golangci-lint
 make test
+```
+
+When injecting the version at build time, use the `main` package path (not the import path):
+
+```bash
+go build -ldflags="-X main.Version=<version>" -o abitool ./cmd/
+# or simply:
+make build   # uses git describe automatically
 ```
