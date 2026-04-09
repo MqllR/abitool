@@ -5,6 +5,7 @@ package contract
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -70,8 +71,9 @@ func NewABIManager(logger *log.Logger) (*ABIManager, error) {
 	return m, nil
 }
 
-// DownloadAndStoreABI downloads the ABI for a given contract address from Etherscan and stores it
-func (a *ABIManager) DownloadAndStoreABI(ctx context.Context, address string) error {
+// DownloadAndStoreABI downloads the ABI for a given contract address from Etherscan and stores it.
+// label is an optional user-defined display name; pass "" to use the Etherscan contract name.
+func (a *ABIManager) DownloadAndStoreABI(ctx context.Context, address, label string) error {
 	if a.etherscanClient == nil {
 		return ErrEtherscanAPIKeyNotSet
 	}
@@ -95,6 +97,7 @@ func (a *ABIManager) DownloadAndStoreABI(ctx context.Context, address string) er
 
 	meta := Metadata{
 		ContractName: contract.ContractName,
+		Label:        label,
 	}
 
 	err = a.saveContractWithABI(
@@ -107,6 +110,28 @@ func (a *ABIManager) DownloadAndStoreABI(ctx context.Context, address string) er
 	}
 
 	a.log.Println("ABI saved successfully.")
+	return nil
+}
+
+// RenameContract sets or updates the user-defined label for a stored contract.
+func (a *ABIManager) RenameContract(ctx context.Context, address, label string) error {
+	existing, err := a.getContract(address)
+	if err != nil {
+		return err
+	}
+
+	existing.Metadata.Label = label
+
+	rawMeta, err := json.Marshal(existing.Metadata)
+	if err != nil {
+		return fmt.Errorf("marshaling contract metadata: %w", err)
+	}
+
+	if err := a.contractStore.Update(address, rawMeta); err != nil {
+		return fmt.Errorf("updating contract metadata: %w", err)
+	}
+
+	a.log.Printf("Contract %s renamed to %q.", address, label)
 	return nil
 }
 

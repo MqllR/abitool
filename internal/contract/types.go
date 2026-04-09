@@ -6,6 +6,7 @@ package contract
 type Metadata struct {
 	ContractName string `json:"contract_name"`
 	ABIPath      string `json:"abi_path"`
+	Label        string `json:"label,omitempty"`
 }
 
 type Contract struct {
@@ -18,5 +19,13 @@ func (c *Contract) HasABI() bool {
 }
 
 func (c *Contract) Name() string {
+	return c.Metadata.ContractName
+}
+
+// DisplayName returns the user-defined label when set, otherwise the Etherscan contract name.
+func (c *Contract) DisplayName() string {
+	if c.Metadata.Label != "" {
+		return c.Metadata.Label
+	}
 	return c.Metadata.ContractName
 }

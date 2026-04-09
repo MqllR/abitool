@@ -324,17 +324,48 @@ func loadContractsCmd(basePath string) tea.Cmd {
 		if err != nil {
 			return contractsErrMsg{err}
 		}
-		var entries []contractEntry
+
+		// Count display names to detect duplicates for ⚠ annotation.
+		type metaFields struct {
+			ContractName string `json:"contract_name"`
+			Label        string `json:"label"`
+		}
+		rawMetas := map[string]metaFields{}
+		nameCounts := map[string]int{}
 		for address := range it {
-			name := address
+			var m metaFields
 			if raw, err := cs.Get(address); err == nil {
-				var meta struct {
-					ContractName string `json:"contract_name"`
-				}
-				if err := json.Unmarshal(raw, &meta); err == nil && meta.ContractName != "" {
-					name = meta.ContractName
-				}
+				_ = json.Unmarshal(raw, &m)
 			}
+			rawMetas[address] = m
+			display := m.ContractName
+			if m.Label != "" {
+				display = m.Label
+			}
+			if display == "" {
+				display = address
+			}
+			nameCounts[display]++
+		}
+
+		var entries []contractEntry
+		for address, m := range rawMetas {
+			display := m.ContractName
+			if m.Label != "" {
+				display = m.Label
+			}
+			if display == "" {
+				display = address
+			}
+
+			name := display
+			if nameCounts[display] > 1 {
+				name = "⚠ " + name
+			}
+			if m.Label != "" && m.Label != m.ContractName {
+				name = name + " [" + m.ContractName + "]"
+			}
+
 			entries = append(entries, contractEntry{address: address, name: name})
 		}
 		return contractsLoadedMsg{entries}
@@ -516,20 +547,22 @@ type dlState int
 
 const (
 	dlIdle dlState = iota
+	dlLabelPrompt
 	dlLoading
 	dlSuccess
 	dlError
 )
 
 type downloadModel struct {
-	input    textinput.Model
-	state    dlState
-	message  string
-	basePath string
-	chainID  int
-	apiKey   string
-	width    int
-	height   int
+	addrInput  textinput.Model
+	labelInput textinput.Model
+	state      dlState
+	message    string
+	basePath   string
+	chainID    int
+	apiKey     string
+	width      int
+	height     int
 }
 
 type downloadDoneMsg struct {
@@ -539,16 +572,22 @@ type downloadDoneMsg struct {
 type downloadErrMsg struct{ err error }
 
 func newDownloadModel(basePath string, chainID int, apiKey string) downloadModel {
-	ti := textinput.New()
-	ti.Placeholder = "0x..."
-	ti.Prompt = "  Contract address: "
-	ti.CharLimit = 42
-	ti.Focus()
+	addr := textinput.New()
+	addr.Placeholder = "0x..."
+	addr.Prompt = "  Contract address: "
+	addr.CharLimit = 42
+	addr.Focus()
+
+	lbl := textinput.New()
+	lbl.Placeholder = "optional, e.g. USDC Proxy"
+	lbl.Prompt = "  Label (optional): "
+
 	return downloadModel{
-		input:    ti,
-		basePath: basePath,
-		chainID:  chainID,
-		apiKey:   apiKey,
+		addrInput:  addr,
+		labelInput: lbl,
+		basePath:   basePath,
+		chainID:    chainID,
+		apiKey:     apiKey,
 	}
 }
 
@@ -577,36 +616,58 @@ func (m downloadModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			// Any other key: reset to idle to let the user try again.
 			m.state = dlIdle
+			m.addrInput.Focus()
+			m.labelInput.Blur()
 			m.message = ""
 			return m, nil
 		}
 		switch msg.Type {
 		case tea.KeyEsc:
+			if m.state == dlLabelPrompt {
+				// Go back to address input, not all the way out.
+				m.state = dlIdle
+				m.labelInput.Blur()
+				m.addrInput.Focus()
+				return m, nil
+			}
 			return m, func() tea.Msg { return popMsg{} }
 		case tea.KeyEnter:
-			if m.state != dlLoading {
-				addr := strings.TrimSpace(m.input.Value())
+			switch m.state {
+			case dlIdle:
+				addr := strings.TrimSpace(m.addrInput.Value())
 				if addr == "" {
 					return m, nil
 				}
+				m.state = dlLabelPrompt
+				m.addrInput.Blur()
+				m.labelInput.Focus()
+				return m, nil
+			case dlLabelPrompt:
+				addr := strings.TrimSpace(m.addrInput.Value())
+				label := strings.TrimSpace(m.labelInput.Value())
 				m.state = dlLoading
-				return m, doDownload(m.basePath, m.apiKey, m.chainID, addr)
+				return m, doDownload(m.basePath, m.apiKey, m.chainID, addr, label)
 			}
 		}
 	}
 
-	if m.state == dlIdle {
+	switch m.state {
+	case dlIdle:
 		var cmd tea.Cmd
-		m.input, cmd = m.input.Update(msg)
+		m.addrInput, cmd = m.addrInput.Update(msg)
+		return m, cmd
+	case dlLabelPrompt:
+		var cmd tea.Cmd
+		m.labelInput, cmd = m.labelInput.Update(msg)
 		return m, cmd
 	}
 	return m, nil
 }
 
-func doDownload(basePath, apiKey string, chainID int, address string) tea.Cmd {
+func doDownload(basePath, apiKey string, chainID int, address, label string) tea.Cmd {
 	return func() tea.Msg {
 		if apiKey == "" {
-			return downloadErrMsg{fmt.Errorf("Etherscan API key not configured (set etherscan.api_key in config)")}
+			return downloadErrMsg{fmt.Errorf("etherscan API key not configured (set etherscan.api_key in config)")}
 		}
 		client := etherscan.NewClient(apiKey, etherscan.FromInt(chainID))
 		src, err := client.GetSourceCode(context.Background(), address)
@@ -622,10 +683,15 @@ func doDownload(basePath, apiKey string, chainID int, address string) tea.Cmd {
 			return downloadErrMsg{err}
 		}
 
-		metaJSON, err := json.Marshal(map[string]any{
+		meta := map[string]any{
 			"contract_name": src.ContractName,
 			"abi_path":      as.GetPath(address),
-		})
+		}
+		if label != "" {
+			meta["label"] = label
+		}
+
+		metaJSON, err := json.Marshal(meta)
 		if err != nil {
 			_ = as.Delete(address)
 			return downloadErrMsg{err}
@@ -641,7 +707,11 @@ func doDownload(basePath, apiKey string, chainID int, address string) tea.Cmd {
 			return downloadErrMsg{fmt.Errorf("saving contract metadata: %w", err)}
 		}
 
-		return downloadDoneMsg{address: address, name: src.ContractName}
+		displayName := src.ContractName
+		if label != "" {
+			displayName = label
+		}
+		return downloadDoneMsg{address: address, name: displayName}
 	}
 }
 
@@ -660,10 +730,16 @@ func (m downloadModel) View() string {
 
 	switch m.state {
 	case dlIdle:
-		sb.WriteString(m.input.View() + "\n\n")
-		sb.WriteString(dimStyle.Render("  enter submit  esc back"))
+		sb.WriteString(dimStyle.Render("  Step 1/2") + "\n")
+		sb.WriteString(m.addrInput.View() + "\n\n")
+		sb.WriteString(dimStyle.Render("  enter next  esc back"))
+	case dlLabelPrompt:
+		sb.WriteString(dimStyle.Render("  Step 2/2") + "\n")
+		sb.WriteString(dimStyle.Render("  Address: "+m.addrInput.Value()) + "\n")
+		sb.WriteString(m.labelInput.View() + "\n\n")
+		sb.WriteString(dimStyle.Render("  enter download  esc ← address"))
 	case dlLoading:
-		sb.WriteString(dimStyle.Render("  ⏳  Downloading "+m.input.Value()+"...") + "\n")
+		sb.WriteString(dimStyle.Render("  ⏳  Downloading "+m.addrInput.Value()+"...") + "\n")
 	case dlSuccess:
 		sb.WriteString(successStyle.Render(m.message) + "\n\n")
 		sb.WriteString(dimStyle.Render("  Press any key to continue..."))

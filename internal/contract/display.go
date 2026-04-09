@@ -91,17 +91,37 @@ func PrintContractList(contracts []*Contract, chainID int) string {
 
 	const gap = 2
 
-	// Measure column widths from raw content.
+	// Build duplicate-display-name set for ⚠ annotation.
+	nameCounts := make(map[string]int, len(contracts))
+	for _, c := range contracts {
+		nameCounts[c.DisplayName()]++
+	}
+
+	// Measure column widths from raw (unstyled) content.
 	colWidths := []int{len(headers[0]), len(headers[1]), len(headers[2])}
-	type row struct{ addr, name, hasABI string }
+	type row struct {
+		addr, name, hasABI string
+		rawName            string // unstyled, for width measurement
+	}
 	rows := make([]row, len(contracts))
 	for i, c := range contracts {
 		abiStr := fmt.Sprintf("%t", c.HasABI())
-		rows[i] = row{c.Address, c.Metadata.ContractName, abiStr}
+
+		// Build display name: label [EtherscanName] or just the name.
+		displayName := c.DisplayName()
+		rawName := displayName
+		if nameCounts[displayName] > 1 {
+			rawName = "⚠ " + displayName
+		}
+		if c.Metadata.Label != "" && c.Metadata.Label != c.Metadata.ContractName {
+			rawName = rawName + " [" + c.Metadata.ContractName + "]"
+		}
+
+		rows[i] = row{c.Address, rawName, abiStr, rawName}
 		if l := len(c.Address); l > colWidths[0] {
 			colWidths[0] = l
 		}
-		if l := len(c.Metadata.ContractName); l > colWidths[1] {
+		if l := len(rawName); l > colWidths[1] {
 			colWidths[1] = l
 		}
 		if l := len(abiStr); l > colWidths[2] {

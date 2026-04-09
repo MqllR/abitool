@@ -10,6 +10,7 @@
 
 - 🖥️ **Interactive TUI** — full-screen dashboard to browse, download and explore stored ABIs
 - ⬇️ **Download** — fetch and cache contract ABIs from Etherscan by address
+- 🏷️ **Labels** — give contracts human-friendly names to avoid confusion with identically-named proxies
 - 📋 **View** — inspect functions, events, constructors and their 4-byte selectors / topic hashes in coloured JSON or table format
 - 📥 **Import** — load a local ABI JSON file without hitting Etherscan
 - 📞 **RPC Call** — call read-only contract functions directly from the CLI (or via interactive TUI form)
@@ -73,7 +74,7 @@ abitool
 | **Home** | Choose between browsing stored contracts or downloading a new one |
 | **Contracts** | Filterable list of all cached ABIs — press `Enter` to explore any contract |
 | **ABI Browse** | Split-pane view: element list on the left (colour-coded by type) + detail panel on the right showing selector, mutability, and parameter types |
-| **Download** | Enter a contract address to fetch its ABI from Etherscan on the spot |
+| **Download** | Two-step form: enter a contract address, then optionally set a label — fetches the ABI from Etherscan on confirmation |
 
 ### Navigation
 
@@ -133,6 +134,7 @@ abitool
 | `abitool abi download <address>` | Download ABI from Etherscan and store locally |
 | `abitool abi view <address>` | Print ABI to stdout (JSON or table) |
 | `abitool abi list` | List all stored contracts |
+| `abitool abi rename <address> <label>` | Set or update the display label for a contract |
 | `abitool abi delete <address>` | Delete a stored ABI |
 | `abitool abi import <address> <file>` | Import a local ABI JSON file |
 | `abitool rpc call <address> <function> [args...]` | Call a read-only contract function via RPC |
@@ -145,6 +147,22 @@ abitool abi download 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
 
 # Download on Base (chain 8453)
 abitool abi download -c 8453 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
+
+# Download and immediately set a label (avoids ambiguous proxy names)
+abitool abi download -c 84532 --label "USDC Base Sepolia" 0x036CbD53842c5426634e7929541eC2318f3dCF7e
+
+# Rename a contract you already downloaded
+abitool abi rename 0x036CbD53842c5426634e7929541eC2318f3dCF7e "USDC Base Sepolia"
+
+# List contracts — duplicate display names are flagged with ⚠; labels shown with [EtherscanName]
+abitool abi list --chainid 84532
+# Chain: Base Sepolia (84532)
+#
+# Address                                     Contract Name                           ABI
+# ─────────────────────────────────────────────────────────────────────────────────────────
+# 0x036CbD53842c5426634e7929541eC2318f3dCF7e  USDC Base Sepolia [FiatTokenProxy]      true
+# 0x808456652fdb597867f38412077A9182bf77359F  ⚠ FiatTokenProxy                        true
+# 0xd74cc5d436923b8ba2c179b4bCA2841D8A52C5B5  FiatTokenV2_2                           true
 
 # View as coloured table with selectors
 abitool abi view -o table 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
@@ -183,6 +201,12 @@ abitool rpc call --interactive \
 | `-c, --chainid` | `1` | Chain ID |
 | `-s, --abi-store` | `~/.config/abitool/abis/` | ABI storage directory |
 
+### `abi download` flags
+
+| Flag | Description |
+|---|---|
+| `--label` | Optional human-friendly display name (overrides the Etherscan contract name in list output) |
+
 ### `abi view` flags
 
 | Flag | Default | Description |
@@ -204,6 +228,26 @@ abitool rpc call --interactive \
 |---|---|
 | `--name` | Contract name to store in metadata |
 | `--force` | Overwrite an existing stored ABI |
+
+---
+
+## Contract Labels
+
+Etherscan names are often misleading — many proxy contracts share the same name (e.g. `FiatTokenProxy`), making it hard to tell them apart in a large library.
+
+**Labels** let you assign a human-friendly name to any stored contract. The original Etherscan name is preserved and shown in brackets when a label is set.
+
+```
+Address                                     Contract Name                           ABI
+─────────────────────────────────────────────────────────────────────────────────────────
+0x036CbD53842c5426634e7929541eC2318f3dCF7e  USDC Base Sepolia [FiatTokenProxy]      true
+0x808456652fdb597867f38412077A9182bf77359F  ⚠ FiatTokenProxy                        true
+0xd74cc5d436923b8ba2c179b4bCA2841D8A52C5B5  FiatTokenV2_2                           true
+```
+
+- Rows whose display name is still ambiguous (no label, same name as another contract) are flagged with **⚠**.
+- Set a label at download time with `--label`, or update it any time with `abi rename`.
+- Labels are stored in `contracts.json` under the `label` key and have no effect on the stored ABI itself.
 
 ---
 
