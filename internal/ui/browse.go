@@ -35,6 +35,9 @@ type browseModel struct {
 	filter   textinput.Model
 	focusing bool
 
+	sigModal bool
+	sigFull  string
+
 	loaded bool
 	err    error
 
@@ -138,9 +141,25 @@ func (m browseModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch msg.String() {
 		case "q":
+			if m.sigModal {
+				m.sigModal = false
+				return m, nil
+			}
 			return m, tea.Quit
 		case "esc", "backspace":
+			if m.sigModal {
+				m.sigModal = false
+				return m, nil
+			}
 			return m, func() tea.Msg { return popMsg{} }
+		case "s":
+			if !m.sigModal && m.loaded && len(m.filtered) > 0 && m.cursor < len(m.filtered) {
+				if sig, err := m.filtered[m.cursor].Signature(); err == nil {
+					m.sigFull = sig
+					m.sigModal = true
+				}
+			}
+			return m, nil
 		case "/":
 			m.focusing = true
 			m.filter.Focus()
@@ -205,7 +224,11 @@ func (m browseModel) View() string {
 	if w < 80 {
 		return m.renderNarrow(w, h)
 	}
-	return m.renderSplit(w, h)
+	base := m.renderSplit(w, h)
+	if m.sigModal {
+		return m.renderSigModal(base, w, h)
+	}
+	return base
 }
 
 // ─── renderSplit: two-pane layout ─────────────────────────────────────────────
@@ -259,11 +282,11 @@ func (m browseModel) renderSplit(w, h int) string {
 	// Status bar with item counter
 	status := dimStyle.Render("  ↑↓/jk navigate  / filter  esc back  q quit")
 	if len(m.filtered) > 0 {
-		hint := "  ↑↓/jk navigate  / filter  esc back  q quit"
+		hint := "  ↑↓/jk navigate  s sig  / filter  esc back  q quit"
 		if m.cursor < len(m.filtered) {
 			el := m.filtered[m.cursor]
 			if el.IsFunction() && isReadOnly(el.StateMutability) {
-				hint = "  ↑↓/jk navigate  enter/c call  / filter  esc back  q quit"
+				hint = "  ↑↓/jk navigate  enter/c call  s sig  / filter  esc back  q quit"
 			}
 		}
 		status = dimStyle.Render(fmt.Sprintf("  [%d/%d]  %s",
@@ -357,6 +380,99 @@ func (m browseModel) buildListLines(colW, maxRows int) []string {
 	return lines
 }
 
+// ─── renderSigModal ───────────────────────────────────────────────────────────
+
+func (m browseModel) renderSigModal(base string, w, h int) string {
+	// Box is at most 80% of terminal width, min 40.
+	boxW := w * 4 / 5
+	if boxW < 40 {
+		boxW = 40
+	}
+	innerW := boxW - 4 // 2 border + 2 padding
+
+	// Break the signature at commas so it's easy to read and select.
+	lines := wrapSignature(m.sigFull, innerW)
+
+	var sb strings.Builder
+	sb.WriteString(lipgloss.NewStyle().Foreground(colorDim).Bold(true).Render("Full Signature") + "\n")
+	sb.WriteString(dimStyle.Render(strings.Repeat("─", innerW)) + "\n")
+	for _, l := range lines {
+		sb.WriteString(lipgloss.NewStyle().Foreground(colorWhite).Render(l) + "\n")
+	}
+	sb.WriteString("\n")
+	sb.WriteString(dimStyle.Render("esc · close"))
+
+	modal := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(colorPrimary).
+		Padding(0, 1).
+		Width(innerW).
+		Render(sb.String())
+
+	return lipgloss.Place(w, h, lipgloss.Center, lipgloss.Center, modal,
+		lipgloss.WithWhitespaceChars(" "),
+		lipgloss.WithWhitespaceForeground(lipgloss.AdaptiveColor{Light: "#ffffff", Dark: "#000000"}),
+	)
+}
+
+// wrapSignature breaks a canonical ABI signature at commas so that each
+// parameter starts on its own line when the full signature is too wide.
+// If the whole signature fits within maxW it is returned as-is.
+func wrapSignature(sig string, maxW int) []string {
+	if len(sig) <= maxW {
+		return []string{sig}
+	}
+	// Find the opening paren.
+	paren := strings.Index(sig, "(")
+	if paren < 0 {
+		return []string{sig}
+	}
+	prefix := sig[:paren+1]          // e.g. "transfer("
+	rest := sig[paren+1 : len(sig)-1] // strip leading "(" and trailing ")"
+	suffix := ")"
+
+	if rest == "" {
+		return []string{prefix + suffix}
+	}
+
+	// Split at top-level commas only (ignore commas inside nested parens).
+	params := splitTopLevel(rest)
+	indent := strings.Repeat(" ", 2)
+	var out []string
+	out = append(out, prefix)
+	for i, p := range params {
+		comma := ","
+		if i == len(params)-1 {
+			comma = ""
+		}
+		out = append(out, indent+p+comma)
+	}
+	out = append(out, suffix)
+	return out
+}
+
+// splitTopLevel splits s at commas that are not nested inside parentheses.
+func splitTopLevel(s string) []string {
+	var parts []string
+	depth := 0
+	start := 0
+	for i, ch := range s {
+		switch ch {
+		case '(':
+			depth++
+		case ')':
+			depth--
+		case ',':
+			if depth == 0 {
+				parts = append(parts, s[start:i])
+				start = i + 1
+			}
+		}
+	}
+	parts = append(parts, s[start:])
+	return parts
+}
+
 // ─── buildDetailLines ─────────────────────────────────────────────────────────
 
 func (m browseModel) buildDetailLines(el abiparser.Element, colW int) []string {
@@ -374,6 +490,21 @@ func (m browseModel) buildDetailLines(el abiparser.Element, colW int) []string {
 	}
 	lines = append(lines, header)
 	lines = append(lines, dimStyle.Render(" "+strings.Repeat("─", colW-2)))
+
+	// Signature (functions, events, errors)
+	if sig, err := el.Signature(); err == nil {
+		// colW - 13: 1 leading space + 12 label width
+		available := colW - 13
+		const hintText = "  (s: expand)"
+		rendered := sig
+		hint := ""
+		if available > len(hintText)+4 && len(sig) > available {
+			// Reserve room for the hint so the combined value never exceeds available.
+			rendered = sig[:available-len(hintText)-1] + "…"
+			hint = dimStyle.Render(hintText)
+		}
+		lines = append(lines, detailRow("Signature", lipgloss.NewStyle().Foreground(colorWhite).Render(rendered)+hint))
+	}
 
 	// Selector (functions and errors) / Topic hash (events)
 	switch {

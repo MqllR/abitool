@@ -82,6 +82,31 @@ func (l *Local) Get(address string) ([]byte, error) {
 	return jsn, nil
 }
 
+// Update replaces the metadata for an existing contract.
+func (l *Local) Update(address string, meta []byte) error {
+	c, err := l.getContracts()
+	if err != nil {
+		return fmt.Errorf("loading contracts: %w", err)
+	}
+
+	if c[address] == nil {
+		return ErrNotFound
+	}
+
+	var metaMap map[string]any
+	if err := json.Unmarshal(meta, &metaMap); err != nil {
+		return fmt.Errorf("unmarshaling metadata: %w", err)
+	}
+
+	c[address] = metaMap
+
+	if err := l.saveContracts(c); err != nil {
+		return fmt.Errorf("saving contracts: %w", err)
+	}
+
+	return nil
+}
+
 // Delete deletes a contract
 func (l *Local) Delete(address string) error {
 	c, err := l.getContracts()
