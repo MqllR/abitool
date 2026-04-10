@@ -24,17 +24,20 @@ This file gives AI assistants the context needed to work effectively in this rep
 cmd/                   Cobra command definitions (entry points only — no business logic)
   main.go              Program entry point — calls Execute()
   abi.go               Parent "abi" command; registers persistent flags (chainid, abi-store)
+  chain.go             Parent "chain" command; registers UseCmd
   abi/
     download.go        abitool abi download <address>
     view.go            abitool abi view <address>
     list.go            abitool abi list
     delete.go          abitool abi delete <address>
+  chain/
+    use.go             abitool chain use <chainID> — persists default chain to config
   root.go              Root command; Version var (injected at build time); loads config + launches TUI when called with no subcommand
 
 internal/
   abitool/
-    app.go             Config loading (sync.Once + viper)
-    config.go          Config struct; ConfigInstance() accessor
+    app.go             Config loading (sync.Once + viper); SaveChainID / saveConfig helpers
+    config.go          Config struct (with yaml + mapstructure tags); ConfigInstance() accessor
   contract/
     abi.go             ABIManager — orchestrates download, view, list, delete
     storage.go         ABIManager storage helpers (getContract, saveContractWithABI, …)
@@ -64,7 +67,7 @@ pkg/
 
 - **`internal/` vs `pkg/`** — `internal/` contains app-specific orchestration (ABIManager, config, UI). `pkg/` contains reusable, app-agnostic packages (abiparser, etherscan client, storage backends).
 - **Storage** — ABIs are stored as raw JSON files named after their contract address. A `contracts.json` index file holds metadata (contract name, ABI file path). Both live under `<abi-store>/<chainid>/`.
-- **Config** — Loaded once via `sync.Once` in `internal/abitool/app.go`, then accessed globally through `ConfigInstance()`. Cobra binds CLI flags into Viper; config file values are the fallback.
+- **Config** — Loaded once via `sync.Once` in `internal/abitool/app.go`, then accessed globally through `ConfigInstance()`. Cobra binds CLI flags into Viper; config file values are the fallback. `SaveChainID(int)` writes the updated `Config` struct back to the YAML file using `go.yaml.in/yaml/v3` (not `viper.WriteConfig()`, to avoid flushing transient flags).
 - **No external ABI codec** — ABI encoding/decoding is intentionally not implemented yet. Function selectors are computed in-house with Keccak-256 over the canonical signature string.
 - **TUI as the default entry point** — Running `abitool` with no subcommand launches the full-screen Bubble Tea dashboard. All CLI subcommands remain fully functional for scripting and piping.
 
@@ -99,9 +102,12 @@ The canonical signature format is `functionName(type1,type2)`. Tuple types must 
 # $HOME/.config/abitool/config.yaml
 etherscan:
   api_key: "YOUR_KEY"
+chainid: 137          # optional — persisted by `abitool chain use` or TUI chain switcher
+rpc:
+  url: ""             # optional RPC fallback
 ```
 
-The `api_key` field is the only required config value. All other settings have defaults and can be overridden via CLI flags.
+The `api_key` field is the only required config value. All other settings have defaults and can be overridden via CLI flags. `chainid` is written back automatically when the user changes the chain (via TUI or `abitool chain use`).
 
 ## Known open issues (as of last review)
 
@@ -109,10 +115,26 @@ All issues from the initial code review have been resolved. See `docs/ROADMAP.md
 
 ## Adding a new command
 
+For `abi` subcommands:
 1. Create `cmd/abi/<name>.go` with a `cobra.Command` exported as `<Name>Cmd`.
 2. Register it in `cmd/abi.go` with `abiCmd.AddCommand(abi.<Name>Cmd)`.
 3. Business logic goes in `internal/contract/` (new method on `ABIManager` if it involves stored contracts).
 4. New Etherscan endpoints go in `pkg/etherscan/`.
+
+For root-level command groups (like `chain`):
+1. Create `cmd/<group>/` directory with subcommand files (e.g. `use.go`).
+2. Create `cmd/<group>.go` declaring the parent `cobra.Command` and calling `rootCmd.AddCommand` in `init()`.
+3. Register it in `cmd/root.go` by importing the package (the `init()` wires it up automatically).
+
+## Keeping documentation up to date
+
+**AI assistants must update documentation whenever making code changes.** Specifically:
+
+- **`README.md`** — update the Commands table, Flags Reference, Configuration section, and Features list when adding commands, flags, or config fields.
+- **`AGENTS.md`** — update the repository layout, design decisions, and configuration sections to reflect structural or architectural changes.
+- **`docs/ROADMAP.md`** — mark features as done when implemented; add new planned features if introduced.
+
+Documentation updates should be part of the same commit as the code change. Never leave docs out of sync with the implementation.
 
 ## Adding a new chain
 
