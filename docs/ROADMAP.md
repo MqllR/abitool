@@ -103,6 +103,17 @@ wallet:
 
 ---
 
+### Persistent chain selection ✅ Done
+
+Users can now persist their default chain ID without editing the config file manually.
+
+- **CLI:** `abitool chain use <chainID>` — sets and saves the default chain.
+- **TUI:** "Switch Chain" from the home screen — chain selection is silently persisted to the config file.
+
+The config write-back marshals only the `Config` struct (not all viper keys) to avoid flushing transient CLI flags. See `internal/abitool/app.go` (`SaveChainID`, `saveConfig`).
+
+---
+
 ### Multi-chain support
 
 Extend `SupportedChainIDs` in `internal/contract/config.go` to include commonly used networks.

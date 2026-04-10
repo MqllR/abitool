@@ -71,10 +71,12 @@ abitool
 
 | Screen | Description |
 |---|---|
-| **Home** | Choose between browsing stored contracts or downloading a new one |
+| **Home** | Choose between browsing stored contracts, downloading a new one, or switching the active chain |
 | **Contracts** | Filterable list of all cached ABIs — press `Enter` to explore any contract |
 | **ABI Browse** | Split-pane view: element list on the left (colour-coded by type) + detail panel on the right showing selector, mutability, and parameter types |
 | **Download** | Two-step form: enter a contract address, then optionally set a label — fetches the ABI from Etherscan on confirmation |
+| **Chain Selector** | Pick from the known chain list or enter a custom chain ID; selection is persisted to the config file |
+
 
 ### Navigation
 
@@ -131,6 +133,7 @@ abitool
 | Command | Description |
 |---|---|
 | `abitool` | Launch interactive TUI |
+| `abitool chain use <chainID>` | Set the default chain ID (persisted to config) |
 | `abitool abi download <address>` | Download ABI from Etherscan and store locally |
 | `abitool abi view <address>` | Print ABI to stdout (JSON or table) |
 | `abitool abi list` | List all stored contracts |
@@ -142,11 +145,14 @@ abitool
 ### Examples
 
 ```bash
+# Set Base as the default chain (persisted to config)
+abitool chain use 8453
+
 # Download USDC ABI on Ethereum mainnet (chain 1, default)
 abitool abi download 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
 
 # Download on Base (chain 8453)
-abitool abi download -c 8453 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
+abitool abi --chainid 8453 download 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
 
 # Download and immediately set a label (avoids ambiguous proxy names)
 abitool abi download -c 84532 --label "USDC Base Sepolia" 0x036CbD53842c5426634e7929541eC2318f3dCF7e
@@ -197,10 +203,11 @@ abitool rpc call --interactive \
 
 | Flag | Default | Description |
 |---|---|---|
-| `-f, --config` | `~/.config/abitool/config.yaml` | Config file path |
-| `-c, --chainid` | `1` | Chain ID |
+| `-c, --config` | `~/.config/abitool/config.yaml` | Config file path |
+| `--chainid` | `1` (or value from config) | Chain ID for this invocation |
 | `-s, --abi-store` | `~/.config/abitool/abis/` | ABI storage directory |
 
+> **Tip:** Use `abitool chain use <id>` to persist a default chain so you don't have to pass `--chainid` every time.
 ### `abi download` flags
 
 | Flag | Description |
@@ -269,10 +276,15 @@ Address                                     Contract Name                       
 | `11155420` | Optimism Sepolia (testnet) |
 | `80002` | Polygon Amoy (testnet) |
 
-Pass the chain ID with `-c`:
+Pass the chain ID with `--chainid`, or set it permanently with `abitool chain use`:
 
 ```bash
-abitool abi -c 8453 download 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
+# One-off override
+abitool abi --chainid 8453 download 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
+
+# Or set Base as the default so you never need the flag again
+abitool chain use 8453
+abitool abi download 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
 ```
 
 ---
@@ -290,7 +302,12 @@ abitool -f /path/to/config.yaml abi list
 ```yaml
 etherscan:
   api_key: "YOUR_ETHERSCAN_API_KEY"   # required for download / TUI download screen
+chainid: 137                           # optional — persisted by `abitool chain use`
+rpc:
+  url: "https://mainnet.infura.io/v3/YOUR_KEY"  # optional RPC fallback
 ```
+
+`chainid` and `rpc.url` are written back to the config file automatically by `abitool chain use` and can also be edited by hand.
 
 ---
 

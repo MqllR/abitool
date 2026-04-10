@@ -129,6 +129,7 @@ func (m appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case chainSelectedMsg:
 		m.chainID = msg.chainID
+		_ = abitool.SaveChainID(msg.chainID)
 		basePath := filepath.Join(m.storePath, strconv.Itoa(m.chainID))
 		home := newHomeModel(basePath, m.chainID, m.apiKey).setSize(m.width, m.height)
 		m.stack = []screen{home}
