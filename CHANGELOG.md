@@ -1,3 +1,12 @@
+# [1.1.0](https://github.com/MqllR/abitool/compare/v1.0.0...v1.1.0) (2026-04-10)
+
+
+### Features
+
+* add contract label/alias support ([#2](https://github.com/MqllR/abitool/issues/2)) ([6783434](https://github.com/MqllR/abitool/commit/678343488554a1eb350995fa8f83cd2505fa242d))
+* display signature in TUI ([#1](https://github.com/MqllR/abitool/issues/1)) ([8eb4a4a](https://github.com/MqllR/abitool/commit/8eb4a4aadefdb8dce5d62389c51d424ff49525a8))
+* persist chain id and add tools for switching default chain id ([#4](https://github.com/MqllR/abitool/issues/4)) ([5e10150](https://github.com/MqllR/abitool/commit/5e10150192ad1fee0afe9a25227359b80124b69f))
+
 # 1.0.0 (2026-04-03)
 
 
