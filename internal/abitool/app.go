@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/spf13/viper"
+	"go.yaml.in/yaml/v3"
 )
 
 func Load() error {
@@ -33,5 +34,27 @@ func Load() error {
 	}
 
 	cfg = c
+	return nil
+}
+
+// SaveChainID updates the default chain ID in memory and persists it to the config file.
+func SaveChainID(chainID int) error {
+	cfg.ChainID = chainID
+	return saveConfig()
+}
+
+// saveConfig marshals the current Config back to the YAML config file.
+func saveConfig() error {
+	configPath := os.ExpandEnv(viper.GetString("config"))
+
+	data, err := yaml.Marshal(cfg)
+	if err != nil {
+		return fmt.Errorf("marshaling config: %w", err)
+	}
+
+	if err := os.WriteFile(configPath, data, 0o600); err != nil {
+		return fmt.Errorf("writing config: %w", err)
+	}
+
 	return nil
 }

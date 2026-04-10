@@ -10,15 +10,15 @@ func ConfigInstance() *Config {
 }
 
 type Config struct {
-	ChainID   int             `mapstructure:"chainid"`
-	EtherScan EtherScanConfig `mapstructure:"etherscan"`
-	RPC       RPCConfig       `mapstructure:"rpc"`
+	ChainID   int             `mapstructure:"chainid" yaml:"chainid,omitempty"`
+	EtherScan EtherScanConfig `mapstructure:"etherscan" yaml:"etherscan,omitempty"`
+	RPC       RPCConfig       `mapstructure:"rpc" yaml:"rpc,omitempty"`
 }
 
 type EtherScanConfig struct {
-	APIKey string `mapstructure:"api_key"`
+	APIKey string `mapstructure:"api_key" yaml:"api_key,omitempty"`
 }
 
 type RPCConfig struct {
-	URL string `mapstructure:"url"`
+	URL string `mapstructure:"url" yaml:"url,omitempty"`
 }
