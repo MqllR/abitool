@@ -443,3 +443,62 @@ func TestHexDecode_OptionalPrefix(t *testing.T) {
 		}
 	}
 }
+
+// ---- DecodeInput ----
+
+func TestDecodeInput_Transfer(t *testing.T) {
+	method, err := ParseMethod(transferElement())
+	if err != nil {
+		t.Fatalf("ParseMethod: %v", err)
+	}
+
+	// Encode first so we have valid calldata to round-trip.
+	calldata, err := EncodeInput(method, []string{
+		"0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+		"1000",
+	})
+	if err != nil {
+		t.Fatalf("EncodeInput: %v", err)
+	}
+
+	values, err := DecodeInput(method, calldata)
+	if err != nil {
+		t.Fatalf("DecodeInput: %v", err)
+	}
+	if len(values) != 2 {
+		t.Fatalf("expected 2 decoded values, got %d", len(values))
+	}
+}
+
+func TestDecodeInput_TooShort(t *testing.T) {
+	method, err := ParseMethod(transferElement())
+	if err != nil {
+		t.Fatalf("ParseMethod: %v", err)
+	}
+
+	_, err = DecodeInput(method, []byte{0x01, 0x02})
+	if err == nil {
+		t.Fatal("expected error for calldata shorter than 4 bytes, got nil")
+	}
+}
+
+func TestDecodeInput_NoInputs(t *testing.T) {
+	method, err := ParseMethod(totalSupplyElement())
+	if err != nil {
+		t.Fatalf("ParseMethod: %v", err)
+	}
+
+	// Calldata with only selector — no arguments.
+	calldata, err := EncodeInput(method, []string{})
+	if err != nil {
+		t.Fatalf("EncodeInput: %v", err)
+	}
+
+	values, err := DecodeInput(method, calldata)
+	if err != nil {
+		t.Fatalf("DecodeInput: %v", err)
+	}
+	if values != nil {
+		t.Errorf("expected nil for no-input method, got %v", values)
+	}
+}
