@@ -22,19 +22,23 @@ This file gives AI assistants the context needed to work effectively in this rep
 
 ```
 cmd/                   Cobra command definitions (entry points only — no business logic)
-  main.go              Program entry point — calls Execute()
-  abi.go               Parent "abi" command; registers persistent flags (chainid, abi-store)
-  chain.go             Parent "chain" command; registers UseCmd
-  abi/
-    download.go        abitool abi download <address>
-    view.go            abitool abi view <address>
-    list.go            abitool abi list
-    delete.go          abitool abi delete <address>
-  chain/
-    use.go             abitool chain use <chainID> — persists default chain to config
-  root.go              Root command; Version var (injected at build time); loads config + launches TUI when called with no subcommand
-  decode.go            abitool decode — calldata / return data decoding (top-level)
-  encode.go            abitool encode — ABI calldata encoding (top-level)
+  abitool/             Main package — `go install github.com/MqllR/abitool/cmd/abitool@latest`
+    main.go            Program entry point — calls Execute()
+    root.go            Root command; Version var (injected at build time); loads config + launches TUI when called with no subcommand
+    decode.go          abitool decode — calldata / return data decoding (top-level)
+    encode.go          abitool encode — ABI calldata encoding (top-level)
+    abi.go             Parent "abi" command; registers persistent flags (chainid, abi-store)
+    chain.go           Parent "chain" command; registers UseCmd
+    rpc.go             Parent "rpc" command
+    abi/
+      download.go      abitool abi download <address>
+      view.go          abitool abi view <address>
+      list.go          abitool abi list
+      delete.go        abitool abi delete <address>
+    chain/
+      use.go           abitool chain use <chainID> — persists default chain to config
+    rpc/
+      call.go          abitool rpc call
 
 internal/
   abitool/
@@ -123,15 +127,17 @@ All issues from the initial code review have been resolved. See `docs/ROADMAP.md
 ## Adding a new command
 
 For `abi` subcommands:
-1. Create `cmd/abi/<name>.go` with a `cobra.Command` exported as `<Name>Cmd`.
-2. Register it in `cmd/abi.go` with `abiCmd.AddCommand(abi.<Name>Cmd)`.
+
+1. Create `cmd/abitool/abi/<name>.go` with a `cobra.Command` exported as `<Name>Cmd`.
+2. Register it in `cmd/abitool/abi.go` with `abiCmd.AddCommand(abi.<Name>Cmd)`.
 3. Business logic goes in `internal/contract/` (new method on `ABIManager` if it involves stored contracts).
 4. New Etherscan endpoints go in `pkg/etherscan/`.
 
 For root-level command groups (like `chain`):
-1. Create `cmd/<group>/` directory with subcommand files (e.g. `use.go`).
-2. Create `cmd/<group>.go` declaring the parent `cobra.Command` and calling `rootCmd.AddCommand` in `init()`.
-3. Register it in `cmd/root.go` by importing the package (the `init()` wires it up automatically).
+
+1. Create `cmd/abitool/<group>/` directory with subcommand files (e.g. `use.go`).
+2. Create `cmd/abitool/<group>.go` declaring the parent `cobra.Command` and calling `rootCmd.AddCommand` in `init()`.
+3. Register it in `cmd/abitool/root.go` by importing the package (the `init()` wires it up automatically).
 
 ## Keeping documentation up to date
 
@@ -302,7 +308,7 @@ The `TablePrinter` in `pkg/abiparser/print.go` also uses Lip Gloss for the stati
 ## Running / building
 
 ```bash
-go build -o abitool ./cmd/
+go build -o abitool ./cmd/abitool/
 go test ./...
 ```
 
@@ -316,7 +322,7 @@ make test
 When injecting the version at build time, use the `main` package path (not the import path):
 
 ```bash
-go build -ldflags="-X main.Version=<version>" -o abitool ./cmd/
+go build -ldflags="-X main.Version=<version>" -o abitool ./cmd/abitool/
 # or simply:
 make build   # uses git describe automatically
 ```

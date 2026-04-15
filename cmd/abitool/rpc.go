@@ -4,7 +4,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/MqllR/abitool/cmd/rpc"
+	"github.com/MqllR/abitool/cmd/abitool/rpc"
 )
 
 func init() {

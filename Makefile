@@ -12,7 +12,7 @@ help: ## List available tasks
 		| awk 'BEGIN {FS = ":.*##"}; {printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
 
 build: ## Build the binary
-	$(GO) build -ldflags="$(LDFLAGS)" -o ./bin/$(BINARY) ./cmd/
+	$(GO) build -ldflags="$(LDFLAGS)" -o ./bin/$(BINARY) ./cmd/abitool/
 
 test: ## Run tests
 	$(GO) test ./...

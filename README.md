@@ -26,7 +26,7 @@
 **1. Install**
 
 ```bash
-go install github.com/MqllR/abitool/cmd@latest
+go install github.com/MqllR/abitool/cmd/abitool@latest
 ```
 
 **2. Get a free Etherscan API key**
@@ -386,7 +386,7 @@ $HOME/.config/abitool/
 git clone https://github.com/MqllR/abitool.git
 cd abitool
 
-go build -o abitool ./cmd/   # compile
+go build -o abitool ./cmd/abitool/   # compile
 
 make test               # go test ./...
 make lint               # golangci-lint run

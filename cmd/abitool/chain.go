@@ -6,7 +6,7 @@ package main
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/MqllR/abitool/cmd/chain"
+	"github.com/MqllR/abitool/cmd/abitool/chain"
 )
 
 func init() {
