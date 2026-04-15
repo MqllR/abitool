@@ -44,21 +44,22 @@ Encode a function call into EVM-compatible calldata (ABI-encoded hex).
 
 ---
 
-### `abitool abi decode` — ABI calldata / return value decoding
+### `abitool decode` — ABI calldata / return value decoding ✅ Done
 
-Decode raw hex calldata or return data back into human-readable form.
+Implemented as a top-level command in `cmd/decode.go` and `internal/contract/decode.go`.
 
-**Motivation:** When inspecting transactions or RPC responses, raw calldata is unreadable without the ABI. This command makes it easy to decode without external tools.
+**Modes:**
 
-**Scope:**
-
-- Decode transaction input data given a contract address and the stored ABI (auto-detect function from 4-byte selector)
-- Decode return data from `eth_call` responses
+- `abitool decode <address> <calldata-hex>` — raw calldata (auto-detects function from 4-byte selector)
+- `abitool decode --eth-call <json>` — parse an `eth_call` JSON request body
+- `abitool decode --from-tx <hex>` — parse a RLP-encoded signed transaction
+- `abitool decode --return-data <address> <function-name> <hex>` — decode return data
 
 **Implementation notes:**
 
-- Selector lookup: match the first 4 bytes of the input against all computed selectors for the stored ABI.
-- Return data decoding reuses the `Outputs []Output` field already present on `abiparser.Element`.
+- `pkg/abicodec.DecodeInput` strips the 4-byte selector and unpacks inputs via go-ethereum.
+- `internal/contract.DecodeManager` handles all four modes and provides clear error messages with suggested fix when the ABI is not in the local store.
+- Raw transaction parsing uses `go-ethereum/core/types.Transaction.UnmarshalBinary` (supports legacy + EIP-1559 + EIP-4844 transactions).
 
 ---
 

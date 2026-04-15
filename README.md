@@ -14,6 +14,7 @@
 - 📋 **View** — inspect functions, events, constructors and their 4-byte selectors / topic hashes in coloured JSON or table format
 - 📥 **Import** — load a local ABI JSON file without hitting Etherscan
 - 📞 **RPC Call** — call read-only contract functions directly from the CLI (or via interactive TUI form)
+- 🔍 **Decode** — decode raw calldata, `eth_call` request bodies, signed transactions, or return data into human-readable form
 - 🗂️ **Multi-chain** — Ethereum, Optimism, Base, Arbitrum, Polygon, BNB Chain, Avalanche, Linea, and more
 - 💾 **Local storage** — ABIs cached per chain ID; no repeated downloads
 
@@ -141,6 +142,10 @@ abitool
 | `abitool abi delete <address>` | Delete a stored ABI |
 | `abitool abi import <address> <file>` | Import a local ABI JSON file |
 | `abitool rpc call <address> <function> [args...]` | Call a read-only contract function via RPC |
+| `abitool decode <address> <calldata-hex>` | Decode raw calldata using the stored ABI |
+| `abitool decode --eth-call <json>` | Decode an `eth_call` JSON request body |
+| `abitool decode --from-tx <hex>` | Decode calldata from a signed transaction |
+| `abitool decode --return-data <address> <fn> <hex>` | Decode return data from a function call |
 
 ### Examples
 
@@ -193,6 +198,20 @@ abitool rpc call --interactive \
   --rpc-url https://eth.llamarpc.com \
   0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 \
   "balanceOf(address)"
+
+# Decode raw calldata (USDC transfer)
+abitool decode 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 \
+  0xa9059cbb000000000000000000000000d8da6bf26964af9d7eed9e03e53415d37aa960450000000000000000000000000000000000000000000000000000000005f5e100
+
+# Decode an eth_call JSON body
+abitool decode --eth-call '{"to":"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48","data":"0xa9059cbb..."}'
+
+# Decode a signed transaction
+abitool decode --from-tx 0x02f8...
+
+# Decode return data from a function
+abitool decode --return-data 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 totalSupply \
+  0x0000000000000000000000000000000000000000000000000000000005f5e100
 ```
 
 ---
@@ -235,6 +254,15 @@ abitool rpc call --interactive \
 |---|---|
 | `--name` | Contract name to store in metadata |
 | `--force` | Overwrite an existing stored ABI |
+
+### `decode` flags
+
+| Flag | Default | Description |
+|---|---|---|
+| `--eth-call` | | Parse an `eth_call` JSON body `{"to":"0x...","data":"0x..."}` |
+| `--from-tx` | | Parse a RLP-encoded signed transaction hex |
+| `--return-data` | | Decode return data; positional args become `<address> <function-name> <return-hex>` |
+| `-o, --output` | `text` | Output format: `text` or `json` |
 
 ---
 

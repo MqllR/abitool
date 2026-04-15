@@ -85,6 +85,26 @@ func DecodeOutput(method abi.Method, data []byte) ([]interface{}, error) {
 	return values, nil
 }
 
+// DecodeInput unpacks the ABI-encoded input arguments from calldata (excluding
+// the 4-byte selector prefix) into a slice of Go values using the method's
+// input types.
+func DecodeInput(method abi.Method, calldata []byte) ([]interface{}, error) {
+	if len(method.Inputs) == 0 {
+		return nil, nil
+	}
+
+	if len(calldata) < 4 {
+		return nil, fmt.Errorf("calldata too short: expected at least 4 bytes for selector, got %d", len(calldata))
+	}
+
+	values, err := method.Inputs.Unpack(calldata[4:])
+	if err != nil {
+		return nil, fmt.Errorf("unpacking inputs: %w", err)
+	}
+
+	return values, nil
+}
+
 // convertArg converts a string CLI argument to the appropriate Go type for the
 // given ABI type. Supports all common EVM types including arrays, fixed-size
 // arrays, and tuples. Arrays and tuples expect a JSON array as input.

@@ -22,6 +22,7 @@ func init() {
 
 	rootCmd.AddCommand(abiCmd)
 	rootCmd.AddCommand(rpcCmd)
+	rootCmd.AddCommand(decodeCmd)
 }
 
 // Version is set at build time via -ldflags.
