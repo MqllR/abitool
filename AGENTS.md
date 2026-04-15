@@ -33,6 +33,8 @@ cmd/                   Cobra command definitions (entry points only — no busin
   chain/
     use.go             abitool chain use <chainID> — persists default chain to config
   root.go              Root command; Version var (injected at build time); loads config + launches TUI when called with no subcommand
+  decode.go            abitool decode — calldata / return data decoding (top-level)
+  encode.go            abitool encode — ABI calldata encoding (top-level)
 
 internal/
   abitool/
@@ -44,10 +46,15 @@ internal/
     types.go           Contract, Metadata structs
     config.go          SupportedChainIDs map
     display.go         Print / PrintContractList — format-aware output (table/json, type filter)
+    decode.go          DecodeManager — calldata and return data decoding
+    encode.go          EncodeManager — ABI calldata encoding
   ui/
     app.go             Root TUI app model; screen stack; homeModel, contractListModel, downloadModel
-    browse.go          browseModel — split-pane ABI element browser (list + detail)
+    browse.go          browseModel — split-pane ABI element browser (list + detail + action modal)
+    call.go            callFormScreen — argument input form for eth_call
+    encode.go          encodeFormScreen + encodeResultScreen — argument input + calldata display
     form.go            RunForm — generic multi-field text-input form (used by rpc call)
+    result.go          callResultScreen — displays eth_call results
 
 pkg/
   abiparser/
