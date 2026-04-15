@@ -1,3 +1,16 @@
+# [1.2.0](https://github.com/MqllR/abitool/compare/v1.1.0...v1.2.0) (2026-04-15)
+
+
+### Bug Fixes
+
+* block invalid ABI ([#9](https://github.com/MqllR/abitool/issues/9)) ([409ea54](https://github.com/MqllR/abitool/commit/409ea54f819e43e456a1a002e96b1aac7f50b657))
+
+
+### Features
+
+* add a decode CLI command ([#6](https://github.com/MqllR/abitool/issues/6)) ([d1e7dfa](https://github.com/MqllR/abitool/commit/d1e7dfa6755d85541d14648f2d89212c7a5d1d76))
+* add encode command ([#7](https://github.com/MqllR/abitool/issues/7)) ([2038f17](https://github.com/MqllR/abitool/commit/2038f172146bfd7409e8978db731e6d6d0280bbb))
+
 # [1.1.0](https://github.com/MqllR/abitool/compare/v1.0.0...v1.1.0) (2026-04-10)
 
 
