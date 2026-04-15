@@ -23,24 +23,28 @@ rpc:
 
 ---
 
-### `abitool abi encode` — ABI calldata encoding
+### `abitool encode` — ABI calldata encoding ✅ Done
 
-Encode a function call into EVM-compatible calldata (ABI-encoded hex).
+Implemented as a top-level command in `cmd/encode.go` and `internal/contract/encode.go`.
 
-**Motivation:** Needed as a prerequisite for transaction sending. Useful standalone for debugging or building raw calldata by hand.
+**Usage:**
 
-**Scope:**
+```
+abitool encode <address> <function> [arg...]
+```
 
-- Accept a stored contract address + function name + argument list
-- Resolve the function from the stored ABI
-- ABI-encode the arguments (including tuple/struct support)
-- Output the hex calldata to stdout
+- Accepts a stored contract address + function name + argument list
+- Resolves the function from the stored ABI
+- ABI-encodes the arguments (including tuple/struct and array support via go-ethereum codec)
+- Outputs the hex calldata to stdout by default; `--output json` includes signature and selector
 
-**Implementation notes:**
+**TUI integration:**
 
-- The ABI encoding spec is defined in the [Solidity ABI documentation](https://docs.soliditylabs.io/docs/abi-spec).
-- Consider using `github.com/ethereum/go-ethereum/accounts/abi` to avoid reimplementing the codec.
-- Must handle all basic types (`uint<M>`, `int<M>`, `bytes<M>`, `bool`, `address`) and dynamic types (`bytes`, `string`, arrays, tuples).
+Pressing `Enter` or `c` on any function in the ABI browser now opens an action menu:
+- **view/pure functions:** ① Call (eth_call) ② Generate calldata
+- **nonpayable/payable functions:** ① Generate calldata
+
+"Generate calldata" pushes an `encodeFormScreen` (argument input) followed by an `encodeResultScreen` (calldata display with signature and selector).
 
 ---
 

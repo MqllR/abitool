@@ -38,6 +38,12 @@ type browseModel struct {
 	sigModal bool
 	sigFull  string
 
+	// actionModal is shown when Enter is pressed on a function element.
+	// The user picks between "Generate calldata" and "Call (eth_call)".
+	actionModal   bool
+	actionCursor  int
+	actionChoices []string
+
 	loaded bool
 	err    error
 
@@ -145,15 +151,23 @@ func (m browseModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.sigModal = false
 				return m, nil
 			}
+			if m.actionModal {
+				m.actionModal = false
+				return m, nil
+			}
 			return m, tea.Quit
 		case "esc", "backspace":
 			if m.sigModal {
 				m.sigModal = false
 				return m, nil
 			}
+			if m.actionModal {
+				m.actionModal = false
+				return m, nil
+			}
 			return m, func() tea.Msg { return popMsg{} }
 		case "s":
-			if !m.sigModal && m.loaded && len(m.filtered) > 0 && m.cursor < len(m.filtered) {
+			if !m.sigModal && !m.actionModal && m.loaded && len(m.filtered) > 0 && m.cursor < len(m.filtered) {
 				if sig, err := m.filtered[m.cursor].Signature(); err == nil {
 					m.sigFull = sig
 					m.sigModal = true
@@ -161,10 +175,18 @@ func (m browseModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		case "/":
-			m.focusing = true
-			m.filter.Focus()
-			return m, textinput.Blink
+			if !m.actionModal {
+				m.focusing = true
+				m.filter.Focus()
+				return m, textinput.Blink
+			}
 		case "up", "k":
+			if m.actionModal {
+				if m.actionCursor > 0 {
+					m.actionCursor--
+				}
+				return m, nil
+			}
 			if m.cursor > 0 {
 				m.cursor--
 				if m.cursor < m.offset {
@@ -172,6 +194,12 @@ func (m browseModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case "down", "j":
+			if m.actionModal {
+				if m.actionCursor < len(m.actionChoices)-1 {
+					m.actionCursor++
+				}
+				return m, nil
+			}
 			if m.cursor < len(m.filtered)-1 {
 				m.cursor++
 				if vr := m.visibleRows(); m.cursor >= m.offset+vr {
@@ -179,12 +207,15 @@ func (m browseModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case "enter", "c":
+			if m.actionModal {
+				return m.confirmAction()
+			}
 			if m.loaded && len(m.filtered) > 0 && m.cursor < len(m.filtered) {
 				el := m.filtered[m.cursor]
-				if el.IsFunction() && isReadOnly(el.StateMutability) {
-					rpcURL := resolveRPCURL(m.chainID)
-					next := newCallFormScreen(m.address, el, rpcURL)
-					return m, func() tea.Msg { return pushMsg{next} }
+				if el.IsFunction() {
+					m.actionChoices = actionChoicesFor(el)
+					m.actionCursor = 0
+					m.actionModal = true
 				}
 			}
 		}
@@ -199,6 +230,37 @@ func (m browseModel) visibleRows() int {
 		rows = 1
 	}
 	return rows
+}
+
+// actionChoicesFor returns the action menu options for a function element based
+// on its state mutability.
+func actionChoicesFor(el abiparser.Element) []string {
+	if isReadOnly(el.StateMutability) {
+		return []string{"Call (eth_call)", "Generate calldata"}
+	}
+	return []string{"Generate calldata"}
+}
+
+// confirmAction handles Enter inside the action modal by pushing the
+// appropriate next screen based on the user's selection.
+func (m browseModel) confirmAction() (tea.Model, tea.Cmd) {
+	m.actionModal = false
+	if len(m.filtered) == 0 || m.cursor >= len(m.filtered) {
+		return m, nil
+	}
+	el := m.filtered[m.cursor]
+	choice := m.actionChoices[m.actionCursor]
+
+	switch choice {
+	case "Call (eth_call)":
+		rpcURL := resolveRPCURL(m.chainID)
+		next := newCallFormScreen(m.address, el, rpcURL)
+		return m, func() tea.Msg { return pushMsg{next} }
+	case "Generate calldata":
+		next := newEncodeFormScreen(m.address, el)
+		return m, func() tea.Msg { return pushMsg{next} }
+	}
+	return m, nil
 }
 
 // ─── View routing ─────────────────────────────────────────────────────────────
@@ -227,6 +289,9 @@ func (m browseModel) View() string {
 	base := m.renderSplit(w, h)
 	if m.sigModal {
 		return m.renderSigModal(base, w, h)
+	}
+	if m.actionModal {
+		return m.renderActionModal(base, w, h)
 	}
 	return base
 }
@@ -285,8 +350,8 @@ func (m browseModel) renderSplit(w, h int) string {
 		hint := "  ↑↓/jk navigate  s sig  / filter  esc back  q quit"
 		if m.cursor < len(m.filtered) {
 			el := m.filtered[m.cursor]
-			if el.IsFunction() && isReadOnly(el.StateMutability) {
-				hint = "  ↑↓/jk navigate  enter/c call  s sig  / filter  esc back  q quit"
+			if el.IsFunction() {
+				hint = "  ↑↓/jk navigate  enter/c action  s sig  / filter  esc back  q quit"
 			}
 		}
 		status = dimStyle.Render(fmt.Sprintf("  [%d/%d]  %s",
@@ -378,6 +443,57 @@ func (m browseModel) buildListLines(colW, maxRows int) []string {
 		lines = append(lines, line)
 	}
 	return lines
+}
+
+// ─── renderActionModal ────────────────────────────────────────────────────────
+
+func (m browseModel) renderActionModal(base string, w, h int) string {
+	if len(m.filtered) == 0 || m.cursor >= len(m.filtered) {
+		return base
+	}
+	el := m.filtered[m.cursor]
+
+	fnName := el.Name
+	if fnName == "" {
+		fnName = string(el.Type)
+	}
+
+	// Compute box width to fit the longest choice line.
+	boxW := 36
+	for _, c := range m.actionChoices {
+		if l := len(c) + 8; l > boxW {
+			boxW = l
+		}
+	}
+	if boxW > w*3/4 {
+		boxW = w * 3 / 4
+	}
+	innerW := boxW - 4 // 2 border + 2 padding
+
+	var sb strings.Builder
+	sb.WriteString(lipgloss.NewStyle().Foreground(colorDim).Bold(true).Render(fnName) + "\n")
+	sb.WriteString(dimStyle.Render(strings.Repeat("─", innerW)) + "\n")
+	for i, choice := range m.actionChoices {
+		if i == m.actionCursor {
+			sb.WriteString(selectedStyle.Render(" ▸ "+choice) + "\n")
+		} else {
+			sb.WriteString("   " + choice + "\n")
+		}
+	}
+	sb.WriteString("\n")
+	sb.WriteString(dimStyle.Render("↑↓ select  enter confirm  esc close"))
+
+	modal := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(colorPrimary).
+		Padding(0, 1).
+		Width(innerW).
+		Render(sb.String())
+
+	return lipgloss.Place(w, h, lipgloss.Center, lipgloss.Center, modal,
+		lipgloss.WithWhitespaceChars(" "),
+		lipgloss.WithWhitespaceForeground(lipgloss.AdaptiveColor{Light: "#ffffff", Dark: "#000000"}),
+	)
 }
 
 // ─── renderSigModal ───────────────────────────────────────────────────────────
