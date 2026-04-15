@@ -52,6 +52,10 @@ func (c *Client) GetSourceCode(ctx context.Context, address string) (*ContractSo
 		contract.ABI = resultABI
 	}
 
+	if contract.ABI == "Contract source code not verified" {
+		return nil, fmt.Errorf("contract source code not verified on Etherscan for address: %s", address)
+	}
+
 	if resultContractName, ok := responseMap["ContractName"].(string); ok {
 		contract.ContractName = resultContractName
 	}

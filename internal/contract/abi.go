@@ -93,7 +93,13 @@ func (a *ABIManager) DownloadAndStoreABI(ctx context.Context, address, label str
 		return err
 	}
 
-	a.log.Println("ABI fetched successfully. Saving locally...")
+	a.log.Println("ABI fetched successfully. Validating...")
+
+	if _, err := abiparser.ParseABI(contract.ABI); err != nil {
+		return fmt.Errorf("invalid ABI received from Etherscan: %w", err)
+	}
+
+	a.log.Println("ABI valid. Saving locally...")
 
 	meta := Metadata{
 		ContractName: contract.ContractName,
