@@ -10,6 +10,7 @@ import (
 	"iter"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 var (
@@ -40,6 +41,7 @@ func NewLocal(storePath string) (*Local, error) {
 
 // Add adds a contract
 func (l *Local) Add(address string, meta []byte) error {
+	address = strings.ToLower(address)
 	c, err := l.getContracts()
 	if err != nil {
 		return fmt.Errorf("loading contracts: %w", err)
@@ -65,6 +67,7 @@ func (l *Local) Add(address string, meta []byte) error {
 
 // Get returns a contract info
 func (l *Local) Get(address string) ([]byte, error) {
+	address = strings.ToLower(address)
 	c, err := l.getContracts()
 	if err != nil {
 		return nil, fmt.Errorf("loading contracts: %w", err)
@@ -84,6 +87,7 @@ func (l *Local) Get(address string) ([]byte, error) {
 
 // Update replaces the metadata for an existing contract.
 func (l *Local) Update(address string, meta []byte) error {
+	address = strings.ToLower(address)
 	c, err := l.getContracts()
 	if err != nil {
 		return fmt.Errorf("loading contracts: %w", err)
@@ -109,6 +113,7 @@ func (l *Local) Update(address string, meta []byte) error {
 
 // Delete deletes a contract
 func (l *Local) Delete(address string) error {
+	address = strings.ToLower(address)
 	c, err := l.getContracts()
 	if err != nil {
 		return fmt.Errorf("loading contracts: %w", err)
