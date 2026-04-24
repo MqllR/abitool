@@ -177,11 +177,14 @@ abitool abi list --chainid 84532
 # 0x808456652fdb597867f38412077A9182bf77359F  ⚠ FiatTokenProxy                        true
 # 0xd74cc5d436923b8ba2c179b4bCA2841D8A52C5B5  FiatTokenV2_2                           true
 
-# View as coloured table with selectors
-abitool abi view -o table 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
+# View as coloured table with selectors (default)
+abitool abi view 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
 
 # Show parameter names too
-abitool abi view -o table --with-input-name 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
+abitool abi view --with-input-name --with-output-name 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
+
+# View as JSON
+abitool abi view -o json 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
 
 # Filter to events only
 abitool abi view -o table -t event 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
@@ -247,9 +250,10 @@ abitool encode --output json 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 transfer
 
 | Flag | Default | Description |
 |---|---|---|
-| `-o, --output` | `json` | Output format: `json` or `table` |
+| `-o, --output` | `table` | Output format: `json` or `table` |
 | `-t, --type` | `all` | Filter by type: `all`, `function`, `event`, `constructor`, `fallback`, `receive` |
-| `--with-input-name` | `false` | Show parameter names in table output |
+| `--with-input-name` | `false` | Show input parameter names in table output |
+| `--with-output-name` | `false` | Show output parameter names in table output |
 
 ### `rpc` flags
 
