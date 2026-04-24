@@ -6,6 +6,7 @@ package abi
 import (
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 type Local struct {
@@ -26,12 +27,12 @@ func NewLocal(storePath string) (*Local, error) {
 
 // Write writes the ABI data for a given contract ID.
 func (l *Local) Write(id string, data string) error {
-	return os.WriteFile(filepath.Join(l.path, id), []byte(data), 0644)
+	return os.WriteFile(filepath.Join(l.path, strings.ToLower(id)), []byte(data), 0644)
 }
 
 // Read reads the ABI data for a given contract ID.
 func (l *Local) Read(id string) (string, error) {
-	data, err := os.ReadFile(filepath.Join(l.path, id))
+	data, err := os.ReadFile(filepath.Join(l.path, strings.ToLower(id)))
 	if err != nil {
 		return "", err
 	}
@@ -40,10 +41,10 @@ func (l *Local) Read(id string) (string, error) {
 }
 
 func (l *Local) Delete(id string) error {
-	return os.Remove(filepath.Join(l.path, id))
+	return os.Remove(filepath.Join(l.path, strings.ToLower(id)))
 }
 
 // GetPath returns the file path of the ABI for a given contract ID.
 func (l *Local) GetPath(id string) string {
-	return filepath.Join(l.path, id)
+	return filepath.Join(l.path, strings.ToLower(id))
 }
