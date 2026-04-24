@@ -11,9 +11,10 @@ import (
 )
 
 func init() {
-	ViewCmd.Flags().StringP("output", "o", "json", "Output format: json or table")
+	ViewCmd.Flags().StringP("output", "o", "table", "Output format: json or table")
 	ViewCmd.Flags().StringP("type", "t", "all", "Filter by function type: all, function, event, constructor, fallback, receive")
 	ViewCmd.Flags().Bool("with-input-name", false, "Display input parameter names in table output")
+	ViewCmd.Flags().Bool("with-output-name", false, "Display output parameter names in table output")
 
 	if err := viper.BindPFlag("abi-view-output", ViewCmd.Flags().Lookup("output")); err != nil {
 		panic(err)
@@ -22,6 +23,9 @@ func init() {
 		panic(err)
 	}
 	if err := viper.BindPFlag("abi-view-with-intput-name", ViewCmd.Flags().Lookup("with-input-name")); err != nil {
+		panic(err)
+	}
+	if err := viper.BindPFlag("abi-view-with-output-name", ViewCmd.Flags().Lookup("with-output-name")); err != nil {
 		panic(err)
 	}
 }

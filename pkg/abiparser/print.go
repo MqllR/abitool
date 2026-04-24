@@ -31,6 +31,7 @@ var (
 	tableMutDefaultStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#6272A4"))
 	tableNameStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("#F8F8F2"))
 	tableInputStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("#8BE9FD"))
+	tableOutputStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("#50FA7B"))
 )
 
 type PrettyPrinter struct {
@@ -78,21 +79,28 @@ func (p *PrettyPrinter) Print() (string, error) {
 }
 
 // TablePrinter prints the ABI in a table format.
-// The columns are: Type, Name, Inputs, StateMutability
+// The columns are: Type, Name, Inputs, Outputs, Selector/Topic, StateMutability
 type TablePrinter struct {
-	a              *ABI
-	WithInputNames bool
+	a               *ABI
+	WithInputNames  bool
+	WithOutputNames bool
 }
 
-type tableOptions func(*TablePrinter)
+type TableOption func(*TablePrinter)
 
-func WithInputNames() tableOptions {
+func WithInputNames() TableOption {
 	return func(tp *TablePrinter) {
 		tp.WithInputNames = true
 	}
 }
 
-func NewTablePrinter(abi *ABI, opts ...tableOptions) *TablePrinter {
+func WithOutputNames() TableOption {
+	return func(tp *TablePrinter) {
+		tp.WithOutputNames = true
+	}
+}
+
+func NewTablePrinter(abi *ABI, opts ...TableOption) *TablePrinter {
 	table := &TablePrinter{a: abi}
 
 	for _, opt := range opts {
@@ -109,14 +117,15 @@ func (p *TablePrinter) Print() (string, error) {
 
 	var b bytes.Buffer
 
-	headers := []string{"Type", "Name", "Inputs", "Selector/Topic", "StateMutability"}
-	colWidths := []int{len(headers[0]), len(headers[1]), len(headers[2]), len(headers[3]), len(headers[4])}
+	headers := []string{"Type", "Name", "Inputs", "Outputs", "Selector/Topic", "StateMutability"}
+	colWidths := []int{len(headers[0]), len(headers[1]), len(headers[2]), len(headers[3]), len(headers[4]), len(headers[5])}
 
 	// Collect raw (unstyled) rows to measure column widths.
 	type rawRow struct {
 		typ      string
 		name     string
 		inputs   string
+		outputs  string
 		selector string
 		mut      string
 	}
@@ -145,10 +154,11 @@ func (p *TablePrinter) Print() (string, error) {
 			typ:      string(element.Type),
 			name:     element.Name,
 			inputs:   p.formatInputTypes(element.Inputs),
+			outputs:  p.formatOutputTypes(element.Outputs),
 			selector: id,
 			mut:      string(element.StateMutability),
 		}
-		cells := []string{r.typ, r.name, r.inputs, r.selector, r.mut}
+		cells := []string{r.typ, r.name, r.inputs, r.outputs, r.selector, r.mut}
 		for i, c := range cells {
 			if len(c) > colWidths[i] {
 				colWidths[i] = len(c)
@@ -184,8 +194,9 @@ func (p *TablePrinter) Print() (string, error) {
 		b.WriteString(cell(styledType(r.typ), colWidths[0]))
 		b.WriteString(cell(tableNameStyle.Render(r.name), colWidths[1]))
 		b.WriteString(cell(tableInputStyle.Render(r.inputs), colWidths[2]))
-		b.WriteString(cell(styledSelector(r.selector), colWidths[3]))
-		b.WriteString(cell(styledMutability(r.mut), colWidths[4]))
+		b.WriteString(cell(tableOutputStyle.Render(r.outputs), colWidths[3]))
+		b.WriteString(cell(styledSelector(r.selector), colWidths[4]))
+		b.WriteString(cell(styledMutability(r.mut), colWidths[5]))
 		b.WriteByte('\n')
 	}
 
@@ -235,6 +246,25 @@ func (p *TablePrinter) formatInputTypes(inputs []Input) string {
 		}
 
 		types = append(types, in.Type)
+	}
+
+	if len(types) == 0 {
+		return ""
+	}
+
+	return fmt.Sprintf("(%s)", strings.Join(types, ","))
+}
+
+func (p *TablePrinter) formatOutputTypes(outputs []Output) string {
+	types := []string{}
+
+	for _, out := range outputs {
+		if p.WithOutputNames && out.Name != "" {
+			types = append(types, fmt.Sprintf("%s %s", out.Name, out.Type))
+			continue
+		}
+
+		types = append(types, out.Type)
 	}
 
 	if len(types) == 0 {
