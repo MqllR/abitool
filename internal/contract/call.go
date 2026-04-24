@@ -185,7 +185,11 @@ func writeResult(out io.Writer, outputs []abiparser.Output, values []interface{}
 	}
 
 	if asJSON {
-		b, err := json.MarshalIndent(values, "", "  ")
+		normalized := make([]interface{}, len(values))
+		for i, v := range values {
+			normalized[i] = normalizeForJSON(v)
+		}
+		b, err := json.MarshalIndent(normalized, "", "  ")
 		if err != nil {
 			return fmt.Errorf("marshaling result to JSON: %w", err)
 		}
@@ -198,7 +202,7 @@ func writeResult(out io.Writer, outputs []abiparser.Output, values []interface{}
 		if i < len(outputs) && outputs[i].Name != "" {
 			label = outputs[i].Name
 		}
-		_, err := fmt.Fprintf(out, "%s: %v\n", label, v)
+		_, err := fmt.Fprintf(out, "%s: %s\n", label, formatValue(v))
 		if err != nil {
 			return err
 		}
