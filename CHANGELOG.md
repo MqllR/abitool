@@ -1,3 +1,12 @@
+## [1.2.2](https://github.com/MqllR/abitool/compare/v1.2.1...v1.2.2) (2026-04-27)
+
+
+### Bug Fixes
+
+* display function outputs for abi view command ([#12](https://github.com/MqllR/abitool/issues/12)) ([0ed409d](https://github.com/MqllR/abitool/commit/0ed409d5db29047b50e6dc06fe97fb2ce9dca5fc))
+* make the contract load case-insensitive ([#10](https://github.com/MqllR/abitool/issues/10)) ([628cd18](https://github.com/MqllR/abitool/commit/628cd18810ecfed0368e321fae280ef71d267f59))
+* normalize solidy types ([#11](https://github.com/MqllR/abitool/issues/11)) ([f411c3c](https://github.com/MqllR/abitool/commit/f411c3c270f8bdfc808c73c9bb31a9a55bd3a8ec))
+
 # [1.2.0](https://github.com/MqllR/abitool/compare/v1.1.0...v1.2.0) (2026-04-15)
 
 
