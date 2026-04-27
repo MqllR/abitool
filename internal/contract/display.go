@@ -75,10 +75,14 @@ func Print(abi *abiparser.ABI) (string, error) {
 	case "json":
 		abiPrinter = abiparser.NewPrettyPrinter(&filtered)
 	case "table":
-		abiPrinter = abiparser.NewTablePrinter(&filtered)
+		var opts []abiparser.TableOption
 		if viper.GetBool("abi-view-with-intput-name") {
-			abiPrinter = abiparser.NewTablePrinter(&filtered, abiparser.WithInputNames())
+			opts = append(opts, abiparser.WithInputNames())
 		}
+		if viper.GetBool("abi-view-with-output-name") {
+			opts = append(opts, abiparser.WithOutputNames())
+		}
+		abiPrinter = abiparser.NewTablePrinter(&filtered, opts...)
 	default:
 		return "", fmt.Errorf("unsupported ABI print format: %s", viper.GetString("abi-print-format"))
 	}

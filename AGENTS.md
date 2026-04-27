@@ -303,7 +303,7 @@ These are exported via the `elementBadge(el abiparser.Element) string` helper in
 
 ### Table output (non-TUI)
 
-The `TablePrinter` in `pkg/abiparser/print.go` also uses Lip Gloss for the static `abi view --output table` command. Follow the same column-sizing pattern and the same colour palette. The `table*Style` vars there mirror the TUI palette — keep them in sync if colours change.
+The `TablePrinter` in `pkg/abiparser/print.go` uses Lip Gloss for the static `abi view` command (default output is `table`; use `--output json` for JSON). Columns: **Type**, **Name**, **Inputs**, **Outputs**, **Selector/Topic**, **StateMutability**. Options `--with-input-name` and `--with-output-name` expand parameter names. Follow the same column-sizing pattern and the same colour palette. The `table*Style` vars there mirror the TUI palette — keep them in sync if colours change.
 
 ## Running / building
 
