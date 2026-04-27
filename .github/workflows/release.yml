@@ -49,10 +49,10 @@ jobs:
           mkdir -p dist
           LDFLAGS="-s -w -X main.Version=${VERSION}"
 
-          GOOS=linux  GOARCH=amd64 go build -ldflags="${LDFLAGS}" -o dist/abitool_linux_amd64  ./cmd/
-          GOOS=linux  GOARCH=arm64 go build -ldflags="${LDFLAGS}" -o dist/abitool_linux_arm64  ./cmd/
-          GOOS=darwin GOARCH=amd64 go build -ldflags="${LDFLAGS}" -o dist/abitool_darwin_amd64 ./cmd/
-          GOOS=darwin GOARCH=arm64 go build -ldflags="${LDFLAGS}" -o dist/abitool_darwin_arm64 ./cmd/
+          GOOS=linux  GOARCH=amd64 go build -ldflags="${LDFLAGS}" -o dist/abitool_linux_amd64  ./cmd/abitool/
+          GOOS=linux  GOARCH=arm64 go build -ldflags="${LDFLAGS}" -o dist/abitool_linux_arm64  ./cmd/abitool/
+          GOOS=darwin GOARCH=amd64 go build -ldflags="${LDFLAGS}" -o dist/abitool_darwin_amd64 ./cmd/abitool/
+          GOOS=darwin GOARCH=arm64 go build -ldflags="${LDFLAGS}" -o dist/abitool_darwin_arm64 ./cmd/abitool/
 
       - name: Semantic Release
         if: steps.semantic.outputs.new_release_published == 'true'
